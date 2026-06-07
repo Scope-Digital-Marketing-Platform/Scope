@@ -6,6 +6,7 @@ require_once __DIR__ . '/src/utils/roles.php';
 require_once __DIR__ . '/src/utils/validators.php';
 
 $db_file = __DIR__ . '/backend/database/users_data.json';
+$product_db = __DIR__ . '/backend/database/product_data.json';
 
 // --- ÇIKIŞ YAPMA İŞLEMİ ---
 if (isset($_GET['logout'])) {
@@ -93,7 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     // --- YENİ ÜRÜN OLUŞTURMA ---
     if ($action === 'create_product') {
-        $product_db = __DIR__ . '/backend/database/product_data.json';
         $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
 
         $id = uniqid(); 
@@ -148,25 +148,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'cover_image'     => $cover_data,
             'gallery'         => $gallery_paths,
             'product_file'    => $product_file_path,
+            'units_sold'      => 0, // YENİ: Satış adedi değişkeni eklendi
+            'reviews'         => [], // YENİ: Yorumlar dizisi
             'created_at'      => date('Y-m-d H:i:s')
         ];
 
         $products[] = $new_product;
         file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
         
+        foreach ($users as &$u) {
+            if ($u['id'] === $_SESSION['user_id']) {
+                if (!isset($u['assets'])) $u['assets'] = [];
+                if (!in_array($id, $u['assets'])) { $u['assets'][] = $id; }
+                break;
+            }
+        }
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
         echo "success";
         exit;
     }
 
-    // --- SEPET İŞLEMLERİ (EKLE / ÇIKAR / CHECKOUT) ---
+    // --- SEPET İŞLEMLERİ ---
     if ($action === 'add_to_cart' && isset($_SESSION['user_id'])) {
         $product_id = $_POST['product_id'];
         foreach ($users as &$u) {
             if ($u['id'] === $_SESSION['user_id']) {
                 if (!isset($u['cart'])) $u['cart'] = [];
-                if (!in_array($product_id, $u['cart'])) {
-                    $u['cart'][] = $product_id;
-                }
+                if (!in_array($product_id, $u['cart'])) { $u['cart'][] = $product_id; }
                 break;
             }
         }
@@ -192,7 +200,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
+    // --- ÖDEME (CHECKOUT) VE SATIŞ ADEDİ ARTIRMA İŞLEMİ ---
     if ($action === 'checkout' && isset($_SESSION['user_id'])) {
+        $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
+        $products_updated = false;
+
         foreach ($users as &$u) {
             if ($u['id'] === $_SESSION['user_id']) {
                 if (!isset($u['assets'])) $u['assets'] = []; 
@@ -200,6 +212,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     foreach ($u['cart'] as $cart_item) {
                         if (!in_array($cart_item, $u['assets'])) {
                             $u['assets'][] = $cart_item; 
+                            
+                            // Ürünlerin units_sold miktarını 1 artırıyoruz
+                            foreach ($products as &$p) {
+                                if ($p['id'] === $cart_item) {
+                                    $p['units_sold'] = isset($p['units_sold']) ? (int)$p['units_sold'] + 1 : 1;
+                                    $products_updated = true;
+                                    break;
+                                }
+                            }
                         }
                     }
                     $u['cart'] = []; 
@@ -208,7 +229,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
         file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
+        if ($products_updated) {
+            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
+        }
         echo json_encode(['status' => 'success']); 
+        exit;
+    }
+
+    // --- YORUM (REVIEW) GÖNDERME İŞLEMİ ---
+    if ($action === 'submit_review' && isset($_SESSION['user_id'])) {
+        $product_id = $_POST['product_id'];
+        $rating = (int)$_POST['rating'];
+        $comment = trim($_POST['comment']);
+        $user_id = $_SESSION['user_id'];
+        $username = $_SESSION['username'];
+
+        // Kullanıcının ürüne sahip olup olmadığını kontrol et
+        $is_owner = false;
+        foreach ($users as $u) {
+            if ($u['id'] === $user_id) {
+                if (isset($u['assets']) && in_array($product_id, $u['assets'])) {
+                    $is_owner = true;
+                }
+                break;
+            }
+        }
+
+        if (!$is_owner) {
+            echo json_encode(['status' => 'error', 'message' => 'Yorum yapabilmek için ürünü satın almalısınız.']);
+            exit;
+        }
+
+        $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
+        $review_added = false;
+
+        foreach ($products as &$p) {
+            if ($p['id'] === $product_id) {
+                if (!isset($p['reviews'])) $p['reviews'] = [];
+                // Zaten yorum yapmış mı kontrol et
+                $already_reviewed = false;
+                foreach ($p['reviews'] as $rev) {
+                    if ($rev['user_id'] === $user_id) { $already_reviewed = true; break; }
+                }
+
+                if (!$already_reviewed) {
+                    $p['reviews'][] = [
+                        'user_id' => $user_id,
+                        'username' => $username,
+                        'rating' => $rating,
+                        'comment' => $comment,
+                        'date' => date('Y-m-d')
+                    ];
+                    $review_added = true;
+                }
+                break;
+            }
+        }
+
+        if ($review_added) {
+            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
+            echo json_encode(['status' => 'success']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Bu ürün için zaten bir yorum yaptınız.']);
+        }
         exit;
     }
 }
@@ -236,7 +319,6 @@ $page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
     <?php include 'src/components/Navbar.php'; ?>
     <div class="page-content">
         <?php
-        // checkout Eklendi
         $allowed_pages = ['home', 'profile', 'store', 'freelancehub', 'createproduct', 'community', 'dashboard', 'usermanagement', 'assetapprovals', 'escrowdisputes', 'roles', 'productdetail', 'checkout'];
         
         if (in_array($page, $allowed_pages)) {

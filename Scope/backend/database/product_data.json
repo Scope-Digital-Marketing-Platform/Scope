@@ -28,7 +28,17 @@
         "cover_image": "backend\/database\/Products\/6a255c7f78813\/Images\/title_image.png",
         "gallery": [],
         "product_file": "backend\/database\/Products\/6a255c7f78813\/Files\/Untitled.mp3",
-        "created_at": "2026-06-07 13:56:47"
+        "created_at": "2026-06-07 13:56:47",
+        "units_sold": 1,
+        "reviews": [
+            {
+                "user_id": "6a2550dc1a7a6",
+                "username": "al\u0131c\u0131",
+                "rating": 5,
+                "comment": "Hangi mozart yazd\u0131 bunu \u00e7ok g\u00fczel",
+                "date": "2026-06-07"
+            }
+        ]
     },
     {
         "id": "6a255d07d94c4",
@@ -56,6 +66,60 @@
         "cover_image": "backend\/database\/Products\/6a255ddc1e730\/Images\/title_image.png",
         "gallery": [],
         "product_file": "backend\/database\/Products\/6a255ddc1e730\/Files\/Ekran g\u00f6r\u00fcnt\u00fcs\u00fc 2026-06-07 145941.png",
-        "created_at": "2026-06-07 14:02:36"
+        "created_at": "2026-06-07 14:02:36",
+        "reviews": [
+            {
+                "user_id": "6a2550dc1a7a6",
+                "username": "al\u0131c\u0131",
+                "rating": 5,
+                "comment": "kat\u0131l\u0131yorum 75 kuru\u015f ger\u00e7ektir bizi kand\u0131raya \u00e7al\u0131\u015f\u0131yorlar",
+                "date": "2026-06-07"
+            }
+        ]
+    },
+    {
+        "id": "6a2590ef5d743",
+        "name": "Matcha Cih Yaz\u0131 Tipi",
+        "description": "Bu \u00fcr\u00fcn Matcha Cih yaz\u0131 tipini i\u00e7erir ",
+        "type": "ui_kit",
+        "price_total": 125.5,
+        "price_seller": 121.73,
+        "seller_username": "deneme",
+        "seller_id": "6a02f17559341",
+        "cover_image": "backend\/database\/Products\/6a2590ef5d743\/Images\/title_image.png",
+        "gallery": [
+            "backend\/database\/Products\/6a2590ef5d743\/Images\/gorsel_1.png"
+        ],
+        "product_file": "backend\/database\/Products\/6a2590ef5d743\/Files\/matcha_cih.zip",
+        "created_at": "2026-06-07 17:40:31",
+        "units_sold": 1,
+        "reviews": [
+            {
+                "user_id": "6a2550dc1a7a6",
+                "username": "al\u0131c\u0131",
+                "rating": 2,
+                "comment": "Bu nas\u0131 yaz\u0131 stili olum hi\u00e7 be\u011fenmedim 2 puan veriyorum oda ismi cih oldu\u011fu i\u00e7in",
+                "date": "2026-06-07"
+            }
+        ]
+    },
+    {
+        "id": "6a259940a41ac",
+        "name": "1 Dolar",
+        "description": "1 Dolar",
+        "type": "graphics",
+        "price_total": 1,
+        "price_seller": 0.97,
+        "seller_username": "al\u0131c\u0131",
+        "seller_id": "6a2550dc1a7a6",
+        "cover_image": "backend\/database\/Products\/6a259940a41ac\/Images\/title_image.jpg",
+        "gallery": [
+            "backend\/database\/Products\/6a259940a41ac\/Images\/gorsel_1.png",
+            "backend\/database\/Products\/6a259940a41ac\/Images\/gorsel_2.png"
+        ],
+        "product_file": "backend\/database\/Products\/6a259940a41ac\/Files\/US_one_dollar_bill,_obverse,_series_2009.jpg",
+        "units_sold": 0,
+        "reviews": [],
+        "created_at": "2026-06-07 18:16:00"
     }
 ]
