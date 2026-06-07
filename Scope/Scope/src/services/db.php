@@ -1,0 +1,1 @@
+// Veritabanı (örn. Supabase) bağlantı ayarları

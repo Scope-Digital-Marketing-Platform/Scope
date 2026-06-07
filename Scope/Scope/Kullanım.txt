@@ -1,0 +1,5 @@
+npm run dev ile http://localhost:5173/ başlat
+
+Terminal 1 (Frontend): npm run dev diyerek Vite sunucunu (5173 portu) çalıştır.
+
+Terminal 2 (Backend): cd backend diyerek klasöre gir ve uvicorn main:app --reload komutuyla Python sunucunu (8000 portu) başlat.

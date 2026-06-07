@@ -1,0 +1,37 @@
+{
+    "admin": {
+        "label": "Sistem Y\u00f6neticisi",
+        "permissions": [
+            "all_access",
+            "view_admin",
+            "edit_users",
+            "approve_assets"
+        ]
+    },
+    "moderator": {
+        "label": "Moderat\u00f6r",
+        "permissions": [
+            "view_admin",
+            "approve_assets"
+        ]
+    },
+    "user": {
+        "label": "Standart Kullan\u0131c\u0131",
+        "permissions": [
+            "buy_asset",
+            "sell_asset"
+        ]
+    },
+    "beratbabapiro": {
+        "label": "Beratbabapiro",
+        "permissions": [
+            "all_access"
+        ]
+    },
+    "aa": {
+        "label": "aa",
+        "permissions": [
+            "sell_asset"
+        ]
+    }
+}

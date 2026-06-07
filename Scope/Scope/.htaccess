@@ -1,0 +1,17 @@
+Options -Indexes
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# 1. Profil Sayfası Kuralı
+RewriteRule ^profile/([a-zA-Z0-9_-]+)/?$ index.php?page=profile&user=$1 [QSA,L]
+
+# 2. Ürün Detay Sayfası Kuralı (Bu satırı ekle)
+RewriteRule ^productdetail/?$ index.php?page=productdetail [QSA,L]
+
+# 3. Ürün Ekleme Sayfası Kuralı
+RewriteRule ^createproduct/?$ index.php?page=createproduct [QSA,L]
+
+# 4. Genel Sayfa Kuralı
+RewriteRule ^([a-zA-Z0-9_-]+)/?$ index.php?page=$1 [QSA,L]

@@ -1,0 +1,1 @@
+# Admin paneline veri sağlayan, yetki kontrollü uç noktalar
