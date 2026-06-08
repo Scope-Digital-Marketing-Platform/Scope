@@ -14,7 +14,7 @@ if (isset($_GET['logout'])) {
     header("Location: home"); exit;
 }
 
-// --- POST İŞLEMLERİ ---
+// --- GİRİŞ VE KAYIT İŞLEMLERİ ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if (!file_exists($db_file)) {
         if (!is_dir(dirname($db_file))) { mkdir(dirname($db_file), 0777, true); }
@@ -88,13 +88,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
         file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
-        header("Location: profile/myaccount?tab=public&success=1");
+        
+        // Yönlendirme Hatası İçin Çözüm: Dinamik Base URL
+        $base_url = str_replace('index.php', '', $_SERVER['SCRIPT_NAME']);
+        header("Location: " . $base_url . "profile/myaccount?tab=public&success=1");
         exit;
     }
 
     // --- YENİ ÜRÜN OLUŞTURMA ---
     if ($action === 'create_product') {
         $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
+
         $id = uniqid(); 
         $base_dir = __DIR__ . '/backend/database/Products/' . $id;
         $images_dir = $base_dir . '/Images';
@@ -147,8 +151,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'cover_image'     => $cover_data,
             'gallery'         => $gallery_paths,
             'product_file'    => $product_file_path,
-            'units_sold'      => 0,
-            'reviews'         => [],
+            'units_sold'      => 0, // YENİ: Satış adedi değişkeni eklendi
+            'reviews'         => [], // YENİ: Yorumlar dizisi
             'created_at'      => date('Y-m-d H:i:s')
         ];
 
@@ -253,6 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
+    // --- ÖDEME (CHECKOUT) VE SATIŞ ADEDİ ARTIRMA İŞLEMİ ---
     if ($action === 'checkout' && isset($_SESSION['user_id'])) {
         $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
         $products_updated = false;
@@ -264,6 +269,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     foreach ($u['cart'] as $cart_item) {
                         if (!in_array($cart_item, $u['assets'])) {
                             $u['assets'][] = $cart_item; 
+                            
+                            // Ürünlerin units_sold miktarını 1 artırıyoruz
                             foreach ($products as &$p) {
                                 if ($p['id'] === $cart_item) {
                                     $p['units_sold'] = isset($p['units_sold']) ? (int)$p['units_sold'] + 1 : 1;
@@ -279,7 +286,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
         file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
-        if ($products_updated) { file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT)); }
+        if ($products_updated) {
+            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
+        }
         echo json_encode(['status' => 'success']); 
         exit;
     }
@@ -292,10 +301,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $user_id = $_SESSION['user_id'];
         $username = $_SESSION['username'];
 
+        // Kullanıcının ürüne sahip olup olmadığını kontrol et
         $is_owner = false;
         foreach ($users as $u) {
             if ($u['id'] === $user_id) {
-                if (isset($u['assets']) && in_array($product_id, $u['assets'])) { $is_owner = true; }
+                if (isset($u['assets']) && in_array($product_id, $u['assets'])) {
+                    $is_owner = true;
+                }
                 break;
             }
         }
@@ -311,6 +323,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         foreach ($products as &$p) {
             if ($p['id'] === $product_id) {
                 if (!isset($p['reviews'])) $p['reviews'] = [];
+                // Zaten yorum yapmış mı kontrol et
                 $already_reviewed = false;
                 foreach ($p['reviews'] as $rev) {
                     if ($rev['user_id'] === $user_id) { $already_reviewed = true; break; }

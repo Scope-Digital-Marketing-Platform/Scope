@@ -320,7 +320,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'profile';
             <div id="public" class="tab-content <?php echo ($active_tab == 'public') ? 'active' : ''; ?>">
                 <h2 style="color:white; text-align:left; border-bottom: 1px solid #333; padding-bottom:15px; margin-bottom:25px;">Public Profile Settings</h2>
                 
-                <form class="settings-form" action="profile/myaccount" method="POST" enctype="multipart/form-data">
+                <form class="settings-form" action="<?php echo str_replace('index.php', '', $_SERVER['SCRIPT_NAME']); ?>profile/myaccount?tab=public" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="update_profile">
                     
                     <div class="form-group">

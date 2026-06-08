@@ -225,32 +225,83 @@ $display_products = array_slice($filtered_products, $offset, $items_per_page);
     const tagsHidden = document.getElementById('tagsHidden');
     let currentTags = tagsHidden.value ? tagsHidden.value.split(',').map(t => t.trim()).filter(t => t !== '') : [];
 
+    // URL'yi SADECE dolu olan filtrelerle, tertemiz oluşturan merkezi fonksiyon
+    function buildCleanUrl() {
+        const urlParams = new URLSearchParams();
+        
+        // 1. Taglar (Kelimeler)
+        if (currentTags.length > 0) {
+            urlParams.set('tags', currentTags.join(','));
+        }
+
+        // 2. Varlık Türü (Type)
+        const typeSelect = document.querySelector('select[name="type"]');
+        if (typeSelect && typeSelect.value !== '') {
+            urlParams.set('type', typeSelect.value);
+        }
+
+        // 3. Min Fiyat
+        const minPriceInput = document.querySelector('input[name="min_price"]');
+        if (minPriceInput && minPriceInput.value !== '') {
+            urlParams.set('min_price', minPriceInput.value);
+        }
+
+        // 4. Max Fiyat
+        const maxPriceInput = document.querySelector('input[name="max_price"]');
+        if (maxPriceInput && maxPriceInput.value !== '') {
+            urlParams.set('max_price', maxPriceInput.value);
+        }
+
+        // 5. Sadece Bedava Checkbox'ı
+        const freeCheckbox = document.querySelector('input[name="free"]');
+        if (freeCheckbox && freeCheckbox.checked) {
+            urlParams.set('free', 'on');
+        }
+
+        // Oluşturulan parametreleri string'e çevir
+        const queryString = urlParams.toString();
+        
+        // window.location.pathname mevcut ana adresi (örn: /Scope/Scope/store) verir.
+        if (queryString === "") {
+            // Hiç filtre kalmadıysa (son tag silindiyse vs.) tertemiz ana URL'ye dön
+            return window.location.pathname; 
+        } else {
+            // Eğer hala filtre varsa sonuna parametreleri ekle
+            return window.location.pathname + '?' + queryString; 
+        }
+    }
+
+    // Inputta Enter'a basıldığında
     keywordInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             const val = this.value.trim().toLowerCase();
             if (val && !currentTags.includes(val)) {
-                currentTags.push(val); tagsHidden.value = currentTags.join(','); keywordInput.value = ''; filterForm.submit(); 
+                currentTags.push(val); 
             }
+            // Kendi temiz URL'mize yönlendir
+            window.location.href = buildCleanUrl();
         }
     });
 
+    // Filtrele butonuna basıldığında
     filterForm.addEventListener('submit', function(e) {
+        // Formun klasik HTML mantığıyla (boş parametrelerle) gönderilmesini iptal et
+        e.preventDefault(); 
         const val = keywordInput.value.trim().toLowerCase();
         if (val && !currentTags.includes(val)) {
-            currentTags.push(val); tagsHidden.value = currentTags.join(','); keywordInput.value = ''; 
+            currentTags.push(val); 
         }
+        // Kendi temiz URL'mize yönlendir
+        window.location.href = buildCleanUrl(); 
     });
 
+    // Çarpıya basıldığında tag silme işlemi
     window.removeTag = function(tagToRemove) {
+        // Silinmek istenen kelimeyi listeden çıkar
         currentTags = currentTags.filter(tag => tag !== tagToRemove);
-        tagsHidden.value = currentTags.join(',');
-        const urlParams = new URLSearchParams(window.location.search);
-        if(urlParams.has('search_query') && urlParams.get('search_query').toLowerCase() === tagToRemove) {
-            urlParams.delete('search_query'); urlParams.set('tags', tagsHidden.value);
-            window.location.href = window.location.pathname + '?' + urlParams.toString();
-            return;
-        }
-        filterForm.submit(); 
+        
+        // Geri kalan aktif filtrelere (fiyat, tür vs.) dokunmadan yeni ve temiz URL'ye git
+        window.location.href = buildCleanUrl();
     }
 </script>
