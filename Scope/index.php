@@ -55,46 +55,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         echo "<script>alert('Giriş bilgileri hatalı!');</script>";
     }
 
-    // --- PROFİL GÜNCELLEME İŞLEMİ ---
-    if ($action === 'update_profile') {
-        $current_user_id = $_SESSION['user_id'];
-        $new_username = trim($_POST['username']);
-        
-        foreach ($users as &$user) {
-            if ($user['id'] === $current_user_id) {
-                $user['username'] = $new_username;
-                $_SESSION['username'] = $new_username;
-
-                $avatar_dir = "pictures/avatars/";
-                $banner_dir = "pictures/banner/";
-
-                if (!is_dir($avatar_dir)) mkdir($avatar_dir, 0777, true);
-                if (!is_dir($banner_dir)) mkdir($banner_dir, 0777, true);
-
-                if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
-                    $ext = pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION);
-                    $avatar_name = "avatar_" . $user['id'] . "_" . time() . "." . $ext;
-                    $target_path = $avatar_dir . $avatar_name;
-                    if (move_uploaded_file($_FILES['avatar']['tmp_name'], $target_path)) { $user['avatar'] = $target_path; }
-                }
-
-                if (isset($_FILES['banner']) && $_FILES['banner']['error'] === UPLOAD_ERR_OK) {
-                    $ext = pathinfo($_FILES['banner']['name'], PATHINFO_EXTENSION);
-                    $banner_name = "banner_" . $user['id'] . "_" . time() . "." . $ext;
-                    $target_path = $banner_dir . $banner_name;
-                    if (move_uploaded_file($_FILES['banner']['tmp_name'], $target_path)) { $user['banner'] = $target_path; }
-                }
-                break;
-            }
-        }
-        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
-        
-        // Yönlendirme Hatası İçin Çözüm: Dinamik Base URL
-        $base_url = str_replace('index.php', '', $_SERVER['SCRIPT_NAME']);
-        header("Location: " . $base_url . "profile/myaccount?tab=public&success=1");
-        exit;
-    }
-
     // --- YENİ ÜRÜN OLUŞTURMA ---
     if ($action === 'create_product') {
         $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
@@ -151,8 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'cover_image'     => $cover_data,
             'gallery'         => $gallery_paths,
             'product_file'    => $product_file_path,
-            'units_sold'      => 0, // YENİ: Satış adedi değişkeni eklendi
-            'reviews'         => [], // YENİ: Yorumlar dizisi
+            'units_sold'      => 0,
+            'reviews'         => [],
             'created_at'      => date('Y-m-d H:i:s')
         ];
 
@@ -189,11 +149,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $images_dir = $base_dir . '/Images';
                 $files_dir = $base_dir . '/Files';
 
-                // Klasörler yoksa oluştur
                 if (!is_dir($images_dir)) mkdir($images_dir, 0777, true);
                 if (!is_dir($files_dir)) mkdir($files_dir, 0777, true);
 
-                // Yeni kapak resmi yüklendiyse
                 if (isset($_FILES['cover_image_file']) && $_FILES['cover_image_file']['error'] === UPLOAD_ERR_OK) {
                     $ext = pathinfo($_FILES['cover_image_file']['name'], PATHINFO_EXTENSION);
                     $target = $images_dir . '/title_image.' . $ext;
@@ -202,7 +160,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     }
                 }
                 
-                // YENİ: Ürün Dosyası (Satılan Varlık) yüklendiyse
                 if (isset($_FILES['product_file']) && $_FILES['product_file']['error'] === UPLOAD_ERR_OK) {
                     $filename = $_FILES['product_file']['name'];
                     $target = $files_dir . '/' . $filename;
@@ -270,7 +227,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         if (!in_array($cart_item, $u['assets'])) {
                             $u['assets'][] = $cart_item; 
                             
-                            // Ürünlerin units_sold miktarını 1 artırıyoruz
                             foreach ($products as &$p) {
                                 if ($p['id'] === $cart_item) {
                                     $p['units_sold'] = isset($p['units_sold']) ? (int)$p['units_sold'] + 1 : 1;
@@ -301,7 +257,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $user_id = $_SESSION['user_id'];
         $username = $_SESSION['username'];
 
-        // Kullanıcının ürüne sahip olup olmadığını kontrol et
         $is_owner = false;
         foreach ($users as $u) {
             if ($u['id'] === $user_id) {
@@ -323,7 +278,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         foreach ($products as &$p) {
             if ($p['id'] === $product_id) {
                 if (!isset($p['reviews'])) $p['reviews'] = [];
-                // Zaten yorum yapmış mı kontrol et
                 $already_reviewed = false;
                 foreach ($p['reviews'] as $rev) {
                     if ($rev['user_id'] === $user_id) { $already_reviewed = true; break; }
@@ -362,7 +316,6 @@ $page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scope Projesi</title>
-    <base href="<?php echo str_replace('index.php', '', $_SERVER['SCRIPT_NAME']); ?>">
     <style>
         body {
             background-color: #0d0d0f; color: #ffffff;
