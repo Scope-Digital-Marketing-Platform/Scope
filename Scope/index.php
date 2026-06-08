@@ -14,7 +14,7 @@ if (isset($_GET['logout'])) {
     header("Location: home"); exit;
 }
 
-// --- GİRİŞ VE KAYIT İŞLEMLERİ ---
+// --- POST İŞLEMLERİ ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if (!file_exists($db_file)) {
         if (!is_dir(dirname($db_file))) { mkdir(dirname($db_file), 0777, true); }
@@ -95,7 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // --- YENİ ÜRÜN OLUŞTURMA ---
     if ($action === 'create_product') {
         $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
-
         $id = uniqid(); 
         $base_dir = __DIR__ . '/backend/database/Products/' . $id;
         $images_dir = $base_dir . '/Images';
@@ -148,8 +147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'cover_image'     => $cover_data,
             'gallery'         => $gallery_paths,
             'product_file'    => $product_file_path,
-            'units_sold'      => 0, // YENİ: Satış adedi değişkeni eklendi
-            'reviews'         => [], // YENİ: Yorumlar dizisi
+            'units_sold'      => 0,
+            'reviews'         => [],
             'created_at'      => date('Y-m-d H:i:s')
         ];
 
@@ -165,6 +164,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
         echo "success";
+        exit;
+    }
+
+    // --- ÜRÜN DÜZENLEME/GÜNCELLEME ---
+    if ($action === 'edit_product' && isset($_SESSION['user_id'])) {
+        $product_id = $_POST['product_id'];
+        $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
+        $updated = false;
+
+        foreach ($products as &$p) {
+            if ($p['id'] === $product_id && $p['seller_id'] === $_SESSION['user_id']) {
+                $p['name'] = $_POST['product_name'] ?? $p['name'];
+                $p['description'] = $_POST['product_detail'] ?? $p['description'];
+                $p['type'] = $_POST['asset_type'] ?? $p['type'];
+                $p['price_total'] = (float)($_POST['price_total'] ?? $p['price_total']);
+                $p['price_seller'] = (float)($_POST['price_seller'] ?? $p['price_seller']);
+
+                $base_dir = __DIR__ . '/backend/database/Products/' . $product_id;
+                $images_dir = $base_dir . '/Images';
+                $files_dir = $base_dir . '/Files';
+
+                // Klasörler yoksa oluştur
+                if (!is_dir($images_dir)) mkdir($images_dir, 0777, true);
+                if (!is_dir($files_dir)) mkdir($files_dir, 0777, true);
+
+                // Yeni kapak resmi yüklendiyse
+                if (isset($_FILES['cover_image_file']) && $_FILES['cover_image_file']['error'] === UPLOAD_ERR_OK) {
+                    $ext = pathinfo($_FILES['cover_image_file']['name'], PATHINFO_EXTENSION);
+                    $target = $images_dir . '/title_image.' . $ext;
+                    if(move_uploaded_file($_FILES['cover_image_file']['tmp_name'], $target)) {
+                        $p['cover_image'] = 'backend/database/Products/' . $product_id . '/Images/title_image.' . $ext;
+                    }
+                }
+                
+                // YENİ: Ürün Dosyası (Satılan Varlık) yüklendiyse
+                if (isset($_FILES['product_file']) && $_FILES['product_file']['error'] === UPLOAD_ERR_OK) {
+                    $filename = $_FILES['product_file']['name'];
+                    $target = $files_dir . '/' . $filename;
+                    if(move_uploaded_file($_FILES['product_file']['tmp_name'], $target)) {
+                        $p['product_file'] = 'backend/database/Products/' . $product_id . '/Files/' . $filename;
+                    }
+                }
+
+                $updated = true;
+                break;
+            }
+        }
+
+        if ($updated) {
+            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
+            echo "success";
+        } else {
+            echo "error";
+        }
         exit;
     }
 
@@ -200,7 +253,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
-    // --- ÖDEME (CHECKOUT) VE SATIŞ ADEDİ ARTIRMA İŞLEMİ ---
     if ($action === 'checkout' && isset($_SESSION['user_id'])) {
         $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
         $products_updated = false;
@@ -212,8 +264,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     foreach ($u['cart'] as $cart_item) {
                         if (!in_array($cart_item, $u['assets'])) {
                             $u['assets'][] = $cart_item; 
-                            
-                            // Ürünlerin units_sold miktarını 1 artırıyoruz
                             foreach ($products as &$p) {
                                 if ($p['id'] === $cart_item) {
                                     $p['units_sold'] = isset($p['units_sold']) ? (int)$p['units_sold'] + 1 : 1;
@@ -229,9 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
         file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
-        if ($products_updated) {
-            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
-        }
+        if ($products_updated) { file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT)); }
         echo json_encode(['status' => 'success']); 
         exit;
     }
@@ -244,13 +292,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $user_id = $_SESSION['user_id'];
         $username = $_SESSION['username'];
 
-        // Kullanıcının ürüne sahip olup olmadığını kontrol et
         $is_owner = false;
         foreach ($users as $u) {
             if ($u['id'] === $user_id) {
-                if (isset($u['assets']) && in_array($product_id, $u['assets'])) {
-                    $is_owner = true;
-                }
+                if (isset($u['assets']) && in_array($product_id, $u['assets'])) { $is_owner = true; }
                 break;
             }
         }
@@ -266,7 +311,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         foreach ($products as &$p) {
             if ($p['id'] === $product_id) {
                 if (!isset($p['reviews'])) $p['reviews'] = [];
-                // Zaten yorum yapmış mı kontrol et
                 $already_reviewed = false;
                 foreach ($p['reviews'] as $rev) {
                     if ($rev['user_id'] === $user_id) { $already_reviewed = true; break; }
@@ -319,7 +363,7 @@ $page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
     <?php include 'src/components/Navbar.php'; ?>
     <div class="page-content">
         <?php
-        $allowed_pages = ['home', 'profile', 'store', 'freelancehub', 'createproduct', 'community', 'dashboard', 'usermanagement', 'assetapprovals', 'escrowdisputes', 'roles', 'productdetail', 'checkout'];
+        $allowed_pages = ['home', 'profile', 'store', 'freelancehub', 'createproduct', 'community', 'dashboard', 'usermanagement', 'assetapprovals', 'escrowdisputes', 'roles', 'productdetail', 'checkout', 'editproduct'];
         
         if (in_array($page, $allowed_pages)) {
             $admin_pages = ['dashboard', 'usermanagement', 'assetapprovals', 'escrowdisputes', 'roles'];
@@ -333,7 +377,12 @@ $page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
                 if($page == 'roles') $fileName = 'Roles';
                 include "src/pages/admin/" . $fileName . ".php";
             } else {
-                $fileName = ($page === 'freelancehub') ? 'FreelanceHub' : ($page === 'createproduct' ? 'CreateProduct' : ucfirst($page));
+                $fileName = '';
+                if ($page === 'freelancehub') $fileName = 'FreelanceHub';
+                elseif ($page === 'createproduct') $fileName = 'CreateProduct';
+                elseif ($page === 'editproduct') $fileName = 'EditProduct';
+                else $fileName = ucfirst($page);
+                
                 include "src/pages/" . $fileName . ".php";
             }
         } else { include 'src/pages/Home.php'; }
