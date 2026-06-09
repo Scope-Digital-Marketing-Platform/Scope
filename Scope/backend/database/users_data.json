@@ -22,6 +22,22 @@
         ],
         "created_topics": [
             "t_6a277ad4bf4d3"
+        ],
+        "notifications": [
+            {
+                "id": "n_6a27836a7dedd",
+                "text": "@al\u0131c\u0131 i\u015fi teslim etti. Onay\u0131n\u0131z bekleniyor.",
+                "link": "jobdetail?id=job_6a2782e0ac7ff",
+                "read": true,
+                "date": "2026-06-09 05:07:22"
+            },
+            {
+                "id": "n_6a278310105fd",
+                "text": "@al\u0131c\u0131 ilan\u0131n\u0131za teklif verdi.",
+                "link": "jobdetail?id=job_6a2782e0ac7ff",
+                "read": true,
+                "date": "2026-06-09 05:05:52"
+            }
         ]
     },
     {
@@ -40,6 +56,23 @@
         ],
         "replied_topics": [
             "t_6a277ad4bf4d3"
-        ]
+        ],
+        "notifications": [
+            {
+                "id": "n_6a2783a423bf4",
+                "text": "@deneme teslimat\u0131n\u0131z\u0131 onaylad\u0131! Ba\u015far\u0131l\u0131 i\u015fler say\u0131n\u0131z artt\u0131.",
+                "link": "jobdetail?id=job_6a2782e0ac7ff",
+                "read": true,
+                "date": "2026-06-09 05:08:20"
+            },
+            {
+                "id": "n_6a27832849c3c",
+                "text": "Tebrikler! @deneme teklifinizi kabul etti. \u0130\u015fe ba\u015flayabilirsiniz.",
+                "link": "jobdetail?id=job_6a2782e0ac7ff",
+                "read": true,
+                "date": "2026-06-09 05:06:16"
+            }
+        ],
+        "completed_jobs": 1
     }
 ]

@@ -1,0 +1,33 @@
+[
+    {
+        "id": "job_6a2782e0ac7ff",
+        "title": "3D murat modeli istiyorum",
+        "description": "-1 g\u00fcn i\u00e7nde bekliyorum 1 g\u00fcn \u00f6nceden elime ula\u015fmadan ilan\u0131 kabul etmeyin",
+        "budget": 100,
+        "author_id": "6a02f17559341",
+        "author_username": "deneme",
+        "status": "completed",
+        "bids": [
+            {
+                "user_id": "6a2550dc1a7a6",
+                "username": "al\u0131c\u0131",
+                "amount": 1000,
+                "message": "1 bin dolar",
+                "date": "2026-06-09 05:05:52"
+            }
+        ],
+        "accepted_bid": {
+            "user_id": "6a2550dc1a7a6",
+            "username": "al\u0131c\u0131",
+            "amount": 1000,
+            "message": "1 bin dolar",
+            "date": "2026-06-09 05:05:52"
+        },
+        "delivery": {
+            "message": "bence burnu yeterli olacakt\u0131r",
+            "file": "backend\/database\/Freelance\/job_6a2782e0ac7ff\/delivery_1780974442.png",
+            "date": "2026-06-09 05:07:22"
+        },
+        "created_at": "2026-06-09 05:05:04"
+    }
+]

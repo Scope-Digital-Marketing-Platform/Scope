@@ -6,7 +6,26 @@ require_once __DIR__ . '/src/utils/roles.php';
 require_once __DIR__ . '/src/utils/validators.php';
 
 $db_file = __DIR__ . '/backend/database/users_data.json';
+$product_db = __DIR__ . '/backend/database/product_data.json';
 $topic_db = __DIR__ . '/backend/database/topics_data.json';
+$freelance_db = __DIR__ . '/backend/database/freelance_data.json';
+
+// Bildirim ekleme yardımcı fonksiyonu
+function addNotification(&$users, $user_id, $text, $link) {
+    foreach ($users as &$u) {
+        if ($u['id'] === $user_id) {
+            if (!isset($u['notifications'])) $u['notifications'] = [];
+            array_unshift($u['notifications'], [
+                'id' => uniqid('n_'),
+                'text' => $text,
+                'link' => $link,
+                'read' => false,
+                'date' => date('Y-m-d H:i:s')
+            ]);
+            break;
+        }
+    }
+}
 
 // --- ÇIKIŞ YAPMA İŞLEMİ ---
 if (isset($_GET['logout'])) {
@@ -14,7 +33,7 @@ if (isset($_GET['logout'])) {
     header("Location: home"); exit;
 }
 
-// --- GİRİŞ VE KAYIT İŞLEMLERİ ---
+// --- POST İŞLEMLERİ ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if (!file_exists($db_file)) {
         if (!is_dir(dirname($db_file))) { mkdir(dirname($db_file), 0777, true); }
@@ -23,13 +42,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $users = json_decode(file_get_contents($db_file), true) ?: [];
     $action = $_POST['action'];
 
+    // 1. KAYIT
     if ($action === 'register') {
         $username = trim($_POST['username']); $email = trim($_POST['email']); $password = $_POST['password'];
         $exists = false;
         foreach ($users as $user) { if ($user['email'] === $email || $user['username'] === $username) { $exists = true; break; } }
         if ($exists) { echo "<script>alert('Bu email veya kullanıcı adı zaten kayıtlı!');</script>"; } 
         else {
-            $new_user = ['id' => uniqid(), 'username' => $username, 'email' => $email, 'password' => password_hash($password, PASSWORD_DEFAULT), 'role' => 'user', 'created_at' => date('Y-m-d H:i:s'), 'created_topics' => [], 'replied_topics' => []];
+            $new_user = [
+                'id' => uniqid(), 'username' => $username, 'email' => $email, 'password' => password_hash($password, PASSWORD_DEFAULT), 
+                'role' => 'user', 'created_at' => date('Y-m-d H:i:s'), 'created_topics' => [], 'replied_topics' => [], 'completed_jobs' => 0, 'notifications' => []
+            ];
             $users[] = $new_user;
             file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
             $_SESSION['is_logged_in'] = true; $_SESSION['user_id'] = $new_user['id']; $_SESSION['username'] = $new_user['username']; $_SESSION['role'] = 'user'; $_SESSION['is_admin'] = false;
@@ -37,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     }
 
+    // 2. GİRİŞ
     if ($action === 'login') {
         $login_id = trim($_POST['login_id']); $password = $_POST['password'];
         if ($login_id === 'root@admin' && $password === 'admin') {
@@ -55,7 +79,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         echo "<script>alert('Giriş bilgileri hatalı!');</script>";
     }
 
-    // --- PROFİL GÜNCELLEME İŞLEMİ ---
+    // 3. BİLDİRİMLERİ OKUNDU İŞARETLEME (AJAX)
+    if ($action === 'read_notifications' && isset($_SESSION['user_id'])) {
+        foreach ($users as &$u) {
+            if ($u['id'] === $_SESSION['user_id']) {
+                if(isset($u['notifications'])) {
+                    foreach($u['notifications'] as &$n) { $n['read'] = true; }
+                }
+                break;
+            }
+        }
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
+        echo json_encode(['status' => 'success']); exit;
+    }
+
+    // 4. PROFİL GÜNCELLEME
     if ($action === 'update_profile') {
         $current_user_id = $_SESSION['user_id'];
         $new_username = trim($_POST['username']);
@@ -92,11 +130,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
-    // --- YENİ ÜRÜN OLUŞTURMA ---
+    // 5. ÜRÜN OLUŞTURMA
     if ($action === 'create_product') {
-        $product_db = __DIR__ . '/backend/database/product_data.json';
         $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
-
         $id = uniqid(); 
         $base_dir = __DIR__ . '/backend/database/Products/' . $id;
         $images_dir = $base_dir . '/Images';
@@ -149,18 +185,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'cover_image'     => $cover_data,
             'gallery'         => $gallery_paths,
             'product_file'    => $product_file_path,
-            'created_at'      => date('Y-m-d H:i:s')
+            'created_at'      => date('Y-m-d H:i:s'),
+            'units_sold'      => 0,
+            'reviews'         => []
         ];
 
         $products[] = $new_product;
         file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
         
+        foreach ($users as &$u) {
+            if ($u['id'] === $_SESSION['user_id']) {
+                if (!isset($u['assets'])) $u['assets'] = [];
+                if (!in_array($id, $u['assets'])) { $u['assets'][] = $id; }
+                break;
+            }
+        }
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
         echo "success";
         exit;
     }
 
-    // --- SEPET İŞLEMLERİ (EKLE / ÇIKAR / CHECKOUT) ---
-    // (Aynı kalacak, uzatmamak için gizlendi ama dosyanızda mevcut kısımlar)
+    // 6. ÜRÜN DÜZENLEME
+    if ($action === 'edit_product' && isset($_SESSION['user_id'])) {
+        $product_id = $_POST['product_id'];
+        $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
+        $updated = false;
+
+        foreach ($products as &$p) {
+            if ($p['id'] === $product_id && $p['seller_id'] === $_SESSION['user_id']) {
+                $p['name'] = $_POST['product_name'] ?? $p['name'];
+                $p['description'] = $_POST['product_detail'] ?? $p['description'];
+                $p['type'] = $_POST['asset_type'] ?? $p['type'];
+                $p['price_total'] = (float)($_POST['price_total'] ?? $p['price_total']);
+                $p['price_seller'] = (float)($_POST['price_seller'] ?? $p['price_seller']);
+
+                $base_dir = __DIR__ . '/backend/database/Products/' . $product_id;
+                $images_dir = $base_dir . '/Images';
+                $files_dir = $base_dir . '/Files';
+
+                if (!is_dir($images_dir)) mkdir($images_dir, 0777, true);
+                if (!is_dir($files_dir)) mkdir($files_dir, 0777, true);
+
+                if (isset($_FILES['cover_image_file']) && $_FILES['cover_image_file']['error'] === UPLOAD_ERR_OK) {
+                    $ext = pathinfo($_FILES['cover_image_file']['name'], PATHINFO_EXTENSION);
+                    $target = $images_dir . '/title_image.' . $ext;
+                    if(move_uploaded_file($_FILES['cover_image_file']['tmp_name'], $target)) {
+                        $p['cover_image'] = 'backend/database/Products/' . $product_id . '/Images/title_image.' . $ext;
+                    }
+                }
+                
+                if (isset($_FILES['product_file']) && $_FILES['product_file']['error'] === UPLOAD_ERR_OK) {
+                    $filename = $_FILES['product_file']['name'];
+                    $target = $files_dir . '/' . $filename;
+                    if(move_uploaded_file($_FILES['product_file']['tmp_name'], $target)) {
+                        $p['product_file'] = 'backend/database/Products/' . $product_id . '/Files/' . $filename;
+                    }
+                }
+                $updated = true;
+                break;
+            }
+        }
+        if ($updated) {
+            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
+            echo "success";
+        } else { echo "error"; }
+        exit;
+    }
+
+    // 7. SEPET VE CHECKOUT İŞLEMLERİ
     if ($action === 'add_to_cart' && isset($_SESSION['user_id'])) {
         $product_id = $_POST['product_id'];
         foreach ($users as &$u) {
@@ -189,28 +281,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($action === 'checkout' && isset($_SESSION['user_id'])) {
+        $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
+        $products_updated = false;
+
         foreach ($users as &$u) {
             if ($u['id'] === $_SESSION['user_id']) {
                 if (!isset($u['assets'])) $u['assets'] = []; 
                 if (isset($u['cart']) && is_array($u['cart'])) {
-                    foreach ($u['cart'] as $cart_item) { if (!in_array($cart_item, $u['assets'])) { $u['assets'][] = $cart_item; } }
+                    foreach ($u['cart'] as $cart_item) {
+                        if (!in_array($cart_item, $u['assets'])) {
+                            $u['assets'][] = $cart_item; 
+                            foreach ($products as &$p) {
+                                if ($p['id'] === $cart_item) {
+                                    $p['units_sold'] = isset($p['units_sold']) ? (int)$p['units_sold'] + 1 : 1;
+                                    $products_updated = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     $u['cart'] = []; 
                 }
                 break;
             }
         }
         file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
+        if ($products_updated) file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
         echo json_encode(['status' => 'success']); exit;
     }
 
-    // ==========================================
-    // --- YENİ KONU OLUŞTURMA (COMMUNITY) ---
-    // ==========================================
+    // 8. COMMUNITY (TOPLULUK) KONU AÇMA / YANITLAMA
     if ($action === 'create_topic' && isset($_SESSION['user_id'])) {
         $topics = file_exists($topic_db) ? json_decode(file_get_contents($topic_db), true) ?: [] : [];
         $topic_id = uniqid('t_'); 
         $images_dir = __DIR__ . '/backend/database/Topics/' . $topic_id;
-        
         if (!is_dir($images_dir)) mkdir($images_dir, 0777, true);
 
         $topic_images = [];
@@ -227,7 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        $new_topic = [
+        $topics[] = [
             'id' => $topic_id,
             'title' => trim($_POST['title'] ?? ''),
             'content' => trim($_POST['content'] ?? ''),
@@ -237,11 +341,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'replies' => [],
             'created_at' => date('Y-m-d H:i:s')
         ];
-
-        $topics[] = $new_topic;
         file_put_contents($topic_db, json_encode($topics, JSON_PRETTY_PRINT));
 
-        // Kullanıcı verisine ekle
         foreach ($users as &$u) {
             if ($u['id'] === $_SESSION['user_id']) {
                 if(!isset($u['created_topics'])) $u['created_topics'] = [];
@@ -250,14 +351,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
         file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
-
-        header("Location: community");
-        exit;
+        header("Location: community"); exit;
     }
 
-    // ==========================================
-    // --- KONUYA YANIT EKLEME ---
-    // ==========================================
     if ($action === 'add_reply' && isset($_SESSION['user_id'])) {
         $topics = file_exists($topic_db) ? json_decode(file_get_contents($topic_db), true) ?: [] : [];
         $topic_id = $_POST['topic_id'];
@@ -266,31 +362,126 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (!empty($message)) {
             foreach ($topics as &$t) {
                 if ($t['id'] === $topic_id) {
-                    $t['replies'][] = [
-                        'user_id' => $_SESSION['user_id'],
-                        'username' => $_SESSION['username'],
-                        'message' => $message,
-                        'date' => date('Y-m-d H:i:s')
-                    ];
+                    $t['replies'][] = ['user_id' => $_SESSION['user_id'], 'username' => $_SESSION['username'], 'message' => $message, 'date' => date('Y-m-d H:i:s')];
                     break;
                 }
             }
             file_put_contents($topic_db, json_encode($topics, JSON_PRETTY_PRINT));
 
-            // Kullanıcının yanıt verdiği farklı konuları takip et
             foreach ($users as &$u) {
                 if ($u['id'] === $_SESSION['user_id']) {
                     if(!isset($u['replied_topics'])) $u['replied_topics'] = [];
-                    if (!in_array($topic_id, $u['replied_topics'])) {
-                        $u['replied_topics'][] = $topic_id;
-                    }
+                    if (!in_array($topic_id, $u['replied_topics'])) { $u['replied_topics'][] = $topic_id; }
                     break;
                 }
             }
             file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
         }
-        header("Location: topicdetail?id=" . urlencode($topic_id));
-        exit;
+        header("Location: topicdetail?id=" . urlencode($topic_id)); exit;
+    }
+
+    // 9. FREELANCE İŞLEMLERİ
+    if ($action === 'create_job' && isset($_SESSION['user_id'])) {
+        $jobs = file_exists($freelance_db) ? json_decode(file_get_contents($freelance_db), true) ?: [] : [];
+        $job_id = uniqid('job_'); 
+        $jobs[] = [
+            'id' => $job_id,
+            'title' => trim($_POST['title']),
+            'description' => trim($_POST['description']),
+            'budget' => (float)$_POST['budget'],
+            'author_id' => $_SESSION['user_id'],
+            'author_username' => $_SESSION['username'],
+            'status' => 'open',
+            'bids' => [],
+            'accepted_bid' => null,
+            'delivery' => null,
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+        file_put_contents($freelance_db, json_encode($jobs, JSON_PRETTY_PRINT));
+        header("Location: freelancehub"); exit;
+    }
+
+    if ($action === 'place_bid' && isset($_SESSION['user_id'])) {
+        $jobs = file_exists($freelance_db) ? json_decode(file_get_contents($freelance_db), true) ?: [] : [];
+        $job_id = $_POST['job_id'];
+        foreach ($jobs as &$job) {
+            if ($job['id'] === $job_id && $job['status'] === 'open') {
+                $job['bids'][] = ['user_id' => $_SESSION['user_id'], 'username' => $_SESSION['username'], 'amount' => (float)$_POST['amount'], 'message' => trim($_POST['message']), 'date' => date('Y-m-d H:i:s')];
+                addNotification($users, $job['author_id'], "@{$_SESSION['username']} ilanınıza teklif verdi.", "jobdetail?id={$job_id}");
+                break;
+            }
+        }
+        file_put_contents($freelance_db, json_encode($jobs, JSON_PRETTY_PRINT));
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
+        header("Location: jobdetail?id=" . urlencode($job_id)); exit;
+    }
+
+    if ($action === 'accept_bid' && isset($_SESSION['user_id'])) {
+        $jobs = file_exists($freelance_db) ? json_decode(file_get_contents($freelance_db), true) ?: [] : [];
+        $job_id = $_POST['job_id']; $bidder_id = $_POST['bidder_id'];
+        foreach ($jobs as &$job) {
+            if ($job['id'] === $job_id && $job['author_id'] === $_SESSION['user_id'] && $job['status'] === 'open') {
+                $job['status'] = 'in_progress';
+                foreach ($job['bids'] as $bid) {
+                    if ($bid['user_id'] === $bidder_id) {
+                        $job['accepted_bid'] = $bid;
+                        addNotification($users, $bidder_id, "Tebrikler! @{$job['author_username']} teklifinizi kabul etti. İşe başlayabilirsiniz.", "jobdetail?id={$job_id}");
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+        file_put_contents($freelance_db, json_encode($jobs, JSON_PRETTY_PRINT));
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
+        header("Location: jobdetail?id=" . urlencode($job_id)); exit;
+    }
+
+    if ($action === 'deliver_job' && isset($_SESSION['user_id'])) {
+        $jobs = file_exists($freelance_db) ? json_decode(file_get_contents($freelance_db), true) ?: [] : [];
+        $job_id = $_POST['job_id'];
+        $delivery_file_path = null;
+        if (isset($_FILES['delivery_file']) && $_FILES['delivery_file']['error'] === UPLOAD_ERR_OK) {
+            $dir = __DIR__ . '/backend/database/Freelance/' . $job_id;
+            if (!is_dir($dir)) mkdir($dir, 0777, true);
+            $ext = pathinfo($_FILES['delivery_file']['name'], PATHINFO_EXTENSION);
+            $filename = 'delivery_' . time() . '.' . $ext;
+            if(move_uploaded_file($_FILES['delivery_file']['tmp_name'], $dir . '/' . $filename)) {
+                $delivery_file_path = 'backend/database/Freelance/' . $job_id . '/' . $filename;
+            }
+        }
+        foreach ($jobs as &$job) {
+            if ($job['id'] === $job_id && $job['status'] === 'in_progress' && $job['accepted_bid']['user_id'] === $_SESSION['user_id']) {
+                $job['delivery'] = ['message' => trim($_POST['message']), 'file' => $delivery_file_path, 'date' => date('Y-m-d H:i:s')];
+                addNotification($users, $job['author_id'], "@{$_SESSION['username']} işi teslim etti. Onayınız bekleniyor.", "jobdetail?id={$job_id}");
+                break;
+            }
+        }
+        file_put_contents($freelance_db, json_encode($jobs, JSON_PRETTY_PRINT));
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
+        header("Location: jobdetail?id=" . urlencode($job_id)); exit;
+    }
+
+    if ($action === 'approve_job' && isset($_SESSION['user_id'])) {
+        $jobs = file_exists($freelance_db) ? json_decode(file_get_contents($freelance_db), true) ?: [] : [];
+        $job_id = $_POST['job_id'];
+        foreach ($jobs as &$job) {
+            if ($job['id'] === $job_id && $job['author_id'] === $_SESSION['user_id'] && $job['status'] === 'in_progress') {
+                $job['status'] = 'completed';
+                $freelancer_id = $job['accepted_bid']['user_id'];
+                foreach ($users as &$u) {
+                    if ($u['id'] === $freelancer_id) {
+                        $u['completed_jobs'] = isset($u['completed_jobs']) ? $u['completed_jobs'] + 1 : 1;
+                        addNotification($users, $freelancer_id, "@{$job['author_username']} teslimatınızı onayladı! Başarılı işler sayınız arttı.", "jobdetail?id={$job_id}");
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+        file_put_contents($freelance_db, json_encode($jobs, JSON_PRETTY_PRINT));
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
+        header("Location: jobdetail?id=" . urlencode($job_id)); exit;
     }
 }
 
@@ -305,11 +496,7 @@ $page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
     <title>Scope Projesi</title>
     <base href="<?php echo str_replace('index.php', '', $_SERVER['SCRIPT_NAME']); ?>">
     <style>
-        body {
-            background-color: #0d0d0f; color: #ffffff;
-            background-image: radial-gradient(circle at 0% 0%, rgba(68, 17, 60, 0.3) 0%, transparent 40%), radial-gradient(circle at 100% 100%, rgba(145, 60, 30, 0.2) 0%, transparent 50%);
-            background-attachment: fixed; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
+        body { background-color: #0d0d0f; color: #ffffff; background-image: radial-gradient(circle at 0% 0%, rgba(68, 17, 60, 0.3) 0%, transparent 40%), radial-gradient(circle at 100% 100%, rgba(145, 60, 30, 0.2) 0%, transparent 50%); background-attachment: fixed; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .page-content { display: flex; justify-content: flex-start; align-items: center; min-height: calc(100vh - 70px); flex-direction: column; text-align: center; width: 100%; }
     </style>
 </head>
@@ -317,29 +504,28 @@ $page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
     <?php include 'src/components/Navbar.php'; ?>
     <div class="page-content">
         <?php
-        // createtopic ve topicdetail Eklendi
-        $allowed_pages = ['home', 'profile', 'store', 'freelancehub', 'createproduct', 'community', 'createtopic', 'topicdetail', 'dashboard', 'usermanagement', 'assetapprovals', 'escrowdisputes', 'roles', 'productdetail', 'checkout'];
+        // DÜZELTİLMİŞ ROUTER: Sayfaların yönlendirmesi kesinlikle eşleşecek şekilde ayarlandı.
+        $allowed_pages = [
+            'home' => 'Home', 'profile' => 'Profile', 'store' => 'Store', 
+            'freelancehub' => 'FreelanceHub', 'createjob' => 'CreateJob', 'jobdetail' => 'JobDetail',
+            'createproduct' => 'CreateProduct', 'editproduct' => 'EditProduct', 'productdetail' => 'ProductDetail',
+            'community' => 'Community', 'createtopic' => 'CreateTopic', 'topicdetail' => 'TopicDetail', 
+            'checkout' => 'Checkout',
+            // Admin Sayfaları
+            'dashboard' => 'admin/Dashboard', 'usermanagement' => 'admin/UserManagement', 
+            'assetapprovals' => 'admin/AssetApprovals', 'escrowdisputes' => 'admin/EscrowDisputes', 'roles' => 'admin/Roles'
+        ];
         
-        if (in_array($page, $allowed_pages)) {
-            $admin_pages = ['dashboard', 'usermanagement', 'assetapprovals', 'escrowdisputes', 'roles'];
-            if (in_array($page, $admin_pages)) {
-                if (!canViewAdmin()) { echo "<script>alert('Yetkisiz Erişim!'); window.location.href='home';</script>"; exit; }
-                $fileName = '';
-                if($page == 'dashboard') $fileName = 'Dashboard';
-                if($page == 'usermanagement') $fileName = 'UserManagement';
-                if($page == 'assetapprovals') $fileName = 'AssetApprovals';
-                if($page == 'escrowdisputes') $fileName = 'EscrowDisputes';
-                if($page == 'roles') $fileName = 'Roles';
-                include "src/pages/admin/" . $fileName . ".php";
-            } else {
-                if ($page === 'freelancehub') $fileName = 'FreelanceHub';
-                elseif ($page === 'createproduct') $fileName = 'CreateProduct';
-                elseif ($page === 'createtopic') $fileName = 'CreateTopic';
-                elseif ($page === 'topicdetail') $fileName = 'TopicDetail';
-                else $fileName = ucfirst($page);
-                include "src/pages/" . $fileName . ".php";
+        if (array_key_exists($page, $allowed_pages)) {
+            $file_to_include = $allowed_pages[$page];
+            // Admin yetkisi kontrolü
+            if (strpos($file_to_include, 'admin/') === 0 && !canViewAdmin()) {
+                echo "<script>alert('Yetkisiz Erişim!'); window.location.href='home';</script>"; exit;
             }
-        } else { include 'src/pages/Home.php'; }
+            include "src/pages/" . $file_to_include . ".php";
+        } else {
+            include 'src/pages/Home.php'; 
+        }
         ?>
     </div>
     <?php include 'src/services/auth.php'; ?>

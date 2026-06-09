@@ -2,10 +2,12 @@
 $is_logged_in = isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in'] === true;
 $current_page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
 
-// --- SEPET VERİLERİNİ ÇEKME ---
+// --- SEPET VE BİLDİRİM VERİLERİNİ ÇEKME ---
 $cart_items = [];
 $cart_total = 0;
 $user_cart_ids = [];
+$notifications = [];
+$unread_notifs = 0;
 
 if ($is_logged_in) {
     $users_db_path = __DIR__ . '/../../backend/database/users_data.json';
@@ -17,6 +19,8 @@ if ($is_logged_in) {
     foreach($users_db as $u) {
         if (isset($_SESSION['user_id']) && $u['id'] === $_SESSION['user_id']) {
             $user_cart_ids = $u['cart'] ?? [];
+            $notifications = $u['notifications'] ?? [];
+            foreach($notifications as $n) { if(!$n['read']) $unread_notifs++; }
             break;
         }
     }
@@ -80,7 +84,7 @@ if ($is_logged_in) {
     .profile-dropdown a:hover { background-color: #1f242c; color: white; }
     .dropdown-divider { height: 1px; background-color: #30363d; margin: 4px 0; }
 
-    /* ================= SEPET DROPDOWN TASARIMI ================= */
+    /* ================= SEPET DROPDOWN ================= */
     .cart-container { position: relative; display: flex; align-items: center; }
     .cart-badge { position: absolute; top: -6px; right: -8px; background: #f39c12; color: #111; font-size: 10px; font-weight: bold; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
     .cart-dropdown { display: none; position: absolute; top: 40px; right: 0; width: 320px; background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1002; flex-direction: column; overflow: hidden; }
@@ -93,15 +97,27 @@ if ($is_logged_in) {
     .cart-item-info { flex: 1; overflow: hidden; }
     .cart-item-title { color: white; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
     .cart-item-price { color: #f39c12; font-weight: bold; font-size: 12px; }
-    
     .cart-item-remove-btn { background: transparent; border: none; color: #ff4a4a; cursor: pointer; transition: 0.3s; padding: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
     .cart-item-remove-btn:hover { color: white; background: #ff4a4a; transform: scale(1.1); }
-    
     .cart-more { padding: 8px; text-align: center; color: #8b949e; font-size: 11px; }
     .cart-footer { padding: 15px; background: rgba(0,0,0,0.2); }
     .cart-total-row { display: flex; justify-content: space-between; margin-bottom: 15px; color: white; font-weight: bold; }
     .cart-checkout-btn { display: block; width: 100%; text-align: center; background: #f39c12; color: #111; padding: 10px 0; border-radius: 6px; font-weight: bold; text-decoration: none; font-size: 14px; transition: all 0.3s; text-transform: uppercase; }
     .cart-checkout-btn:hover { background: #f1c40f; opacity: 0.9; }
+
+    /* ================= BİLDİRİM DROPDOWN ================= */
+    .notif-container { position: relative; display: flex; align-items: center; }
+    .notif-badge { position: absolute; top: -6px; right: -8px; background: #e74c3c; color: white; font-size: 10px; font-weight: bold; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+    .notif-dropdown { display: none; position: absolute; top: 40px; right: -60px; width: 300px; background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1002; flex-direction: column; overflow: hidden; }
+    .notif-dropdown.open { display: flex; }
+    .notif-header { padding: 12px 15px; border-bottom: 1px solid #30363d; font-size: 13px; color: #8b949e; font-weight: bold; display: flex; justify-content: space-between; }
+    .notif-items-wrapper { max-height: 300px; overflow-y: auto; }
+    .notif-empty { padding: 20px; text-align: center; color: #8b949e; font-size: 13px; }
+    .notif-item { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 5px; text-decoration: none; transition: background 0.2s; }
+    .notif-item:hover { background: rgba(255,255,255,0.05); }
+    .notif-item.unread { background: rgba(243, 156, 18, 0.05); border-left: 3px solid #f39c12; }
+    .notif-text { color: white; font-size: 13px; line-height: 1.4; }
+    .notif-date { color: #8b949e; font-size: 11px; }
 
     /* Alt Navbar Tasarımı */
     .sub-nav-wrapper { display: flex; justify-content: center; position: relative; width: 100%; pointer-events: none; margin-top: -1px; z-index: 1; }
@@ -112,7 +128,6 @@ if ($is_logged_in) {
     .sub-navbar .add-product-btn svg { width: 26px; height: 26px; transition: all 0.3s ease; }
     .sub-navbar .add-product-btn:hover, .sub-navbar .add-product-btn.active { color: #f39c12; filter: drop-shadow(0 0 5px rgba(243, 156, 18, 0.4)); }
     .sub-navbar .add-product-btn:hover svg circle, .sub-navbar .add-product-btn.active svg circle { fill: rgba(243, 156, 18, 0.1); }
-
     .nav-indicator { position: absolute; bottom: 8px; left: 0; height: 3px; background-color: #f39c12; border-radius: 3px; box-shadow: 0 0 8px rgba(243, 156, 18, 0.6); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), width 0.4s ease; z-index: 1; width: 0; transform: translateX(0); }
     .nav-indicator.is-add { opacity: 0; }
 
@@ -148,18 +163,18 @@ if ($is_logged_in) {
     body.light-mode .profile-dropdown a:hover { background-color: #f1f5f9; color: #0f172a; }
     body.light-mode .dropdown-divider { background-color: #e2e8f0; }
 
-    /* Sepet Light Mode Overrides (Renk Düzeltmeleri) */
-    body.light-mode .cart-dropdown { background-color: #ffffff; border-color: #e2e8f0; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-    body.light-mode .cart-header { border-color: #e2e8f0; color: #64748b; }
-    body.light-mode .cart-item { border-color: #e2e8f0; }
-    body.light-mode .cart-item-title { color: #0f172a; }
+    /* Sepet & Bildirim Light Mode Overrides */
+    body.light-mode .cart-dropdown, body.light-mode .notif-dropdown { background-color: #ffffff; border-color: #e2e8f0; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+    body.light-mode .cart-header, body.light-mode .notif-header { border-color: #e2e8f0; color: #64748b; }
+    body.light-mode .cart-item, body.light-mode .notif-item { border-color: #e2e8f0; }
+    body.light-mode .cart-item-title, body.light-mode .notif-text { color: #0f172a; }
     body.light-mode .cart-item-price { color: #2563eb; }
     body.light-mode .cart-footer { background: #f8fafc; }
     body.light-mode .cart-total-row { color: #0f172a; }
     body.light-mode .cart-item-remove-btn { color: #ef4444; }
     body.light-mode .cart-item-remove-btn:hover { color: white; background: #ef4444; }
-    
-    /* ÖNEMLİ: Light Mode Checkout Buton Rengi !important ile Sabitlendi */
+    body.light-mode .notif-item:hover { background: #f8fafc; }
+    body.light-mode .notif-item.unread { background: rgba(59, 130, 246, 0.05); border-left-color: #3b82f6; }
     body.light-mode .cart-checkout-btn { background: #2563eb !important; color: #ffffff !important; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2); }
     body.light-mode .cart-checkout-btn:hover { background: #1d4ed8 !important; color: #ffffff !important; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3); }
 </style>
@@ -194,8 +209,7 @@ if ($is_logged_in) {
 
             <?php if($is_logged_in): ?>
                 <div class="nav-icons">
-                    <!-- SEPET YAPISI -->
-                    <div class="cart-container" id="cartContainer">
+                    <div class="cart-container" id="cartContainer" style="margin-right:15px;">
                         <a href="javascript:void(0)" id="cartBtn" title="Sepet">
                             <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                             <?php if(!empty($user_cart_ids)): ?>
@@ -221,7 +235,6 @@ if ($is_logged_in) {
                                                 <div class="cart-item-title"><?php echo htmlspecialchars($item['name']); ?></div>
                                                 <div class="cart-item-price"><?php echo htmlspecialchars($item['price_total']); ?> $</div>
                                             </div>
-                                            <!-- ÇIKARMA BUTONU -->
                                             <button onclick="removeFromCart('<?php echo $item['id']; ?>')" class="cart-item-remove-btn" title="Sepetten Çıkar">
                                                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                             </button>
@@ -244,8 +257,31 @@ if ($is_logged_in) {
                         </div>
                     </div>
 
-                    <a href="#" title="Inbox"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></a>
-                    <a href="#" title="Notifications"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg></a>
+                    <div class="notif-container" id="notifContainer" style="margin-right:15px;">
+                        <a href="javascript:void(0)" id="notifBtn" title="Bildirimler">
+                            <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                            <?php if($unread_notifs > 0): ?>
+                                <span class="notif-badge" id="notifBadge"><?php echo $unread_notifs; ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <div class="notif-dropdown" id="notifDropdown">
+                            <div class="notif-header">
+                                <span>Bildirimler</span>
+                            </div>
+                            <div class="notif-items-wrapper">
+                                <?php if(empty($notifications)): ?>
+                                    <div class="notif-empty">Hiç bildiriminiz yok.</div>
+                                <?php else: ?>
+                                    <?php foreach(array_slice($notifications, 0, 10) as $n): ?>
+                                        <a href="<?php echo htmlspecialchars($n['link']); ?>" class="notif-item <?php echo $n['read'] ? '' : 'unread'; ?>">
+                                            <span class="notif-text"><?php echo htmlspecialchars($n['text']); ?></span>
+                                            <span class="notif-date"><?php echo date('d.m.Y H:i', strtotime($n['date'])); ?></span>
+                                        </a>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="profile-container">
@@ -260,7 +296,6 @@ if ($is_logged_in) {
                         <a href="profile/myaccount?tab=profile">Profile</a>
                         <a href="profile/myaccount?tab=public">Settings</a>
                         <a href="profile/myaccount?tab=assets">My Assets</a>
-                        <a href="#">Inbox</a>
                         <div class="dropdown-divider"></div>
                         <?php if(isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true): ?>
                             <a href="dashboard" style="color: #f39c12;">Admin Panel</a>
@@ -293,7 +328,6 @@ if ($is_logged_in) {
 </div>
 
 <script>
-    // --- AJAX İLE SEPETTEN ÇIKARMA İŞLEMİ ---
     function removeFromCart(productId) {
         if(!confirm('Ürünü sepetinizden çıkarmak istediğinize emin misiniz?')) return;
         
@@ -301,21 +335,14 @@ if ($is_logged_in) {
         formData.append('action', 'remove_from_cart');
         formData.append('product_id', productId);
 
-        fetch('index.php', {
-            method: 'POST',
-            body: formData
-        })
+        fetch('index.php', { method: 'POST', body: formData })
         .then(response => response.json())
-        .then(data => {
-            if(data.status === 'success') {
-                window.location.reload(); 
-            }
-        })
+        .then(data => { if(data.status === 'success') { window.location.reload(); } })
         .catch(error => console.error('Hata:', error));
     }
 
-    // Geri kalan UI JS Kodları...
     document.addEventListener("DOMContentLoaded", function() {
+        // --- Tema İşlemleri ---
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const themeIcon = document.getElementById('themeIcon');
         const moonPath = 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z';
@@ -334,6 +361,7 @@ if ($is_logged_in) {
             });
         }
 
+        // --- Duyurular ---
         const announcements = document.querySelectorAll('.announcement-text');
         if (announcements.length > 0) {
             let currentAnnounce = 0; announcements[currentAnnounce].classList.add('show');
@@ -347,29 +375,66 @@ if ($is_logged_in) {
             }
         }
 
+        // --- Açılır Menüler (Sepet, Bildirim, Profil) ---
         const profileBtn = document.getElementById('profileBtn');
         const profileDropdown = document.getElementById('profileDropdown');
         const cartBtn = document.getElementById('cartBtn');
         const cartDropdown = document.getElementById('cartDropdown');
         const cartContainer = document.getElementById('cartContainer');
+        const notifBtn = document.getElementById('notifBtn');
+        const notifDropdown = document.getElementById('notifDropdown');
+        const notifContainer = document.getElementById('notifContainer');
+        const notifBadge = document.getElementById('notifBadge');
+
+        function closeAllDropdowns() {
+            if(profileDropdown) profileDropdown.classList.remove('open');
+            if(cartDropdown) cartDropdown.classList.remove('open');
+            if(notifDropdown) notifDropdown.classList.remove('open');
+        }
 
         if (profileBtn) {
             profileBtn.addEventListener('click', function(e) {
-                e.stopPropagation(); profileDropdown.classList.toggle('open');
-                if(cartDropdown) cartDropdown.classList.remove('open'); 
+                e.stopPropagation(); 
+                const isOpen = profileDropdown.classList.contains('open');
+                closeAllDropdowns();
+                if(!isOpen) profileDropdown.classList.add('open');
             });
         }
+        
         if (cartBtn) {
             cartBtn.addEventListener('click', function(e) {
-                e.stopPropagation(); cartDropdown.classList.toggle('open');
-                if(profileDropdown) profileDropdown.classList.remove('open');
+                e.stopPropagation(); 
+                const isOpen = cartDropdown.classList.contains('open');
+                closeAllDropdowns();
+                if(!isOpen) cartDropdown.classList.add('open');
             });
         }
+
+        if (notifBtn) {
+            notifBtn.addEventListener('click', function(e) {
+                e.stopPropagation(); 
+                const isOpen = notifDropdown.classList.contains('open');
+                closeAllDropdowns();
+                if(!isOpen) {
+                    notifDropdown.classList.add('open');
+                    if (notifBadge) {
+                        fetch('index.php', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                            body: 'action=read_notifications'
+                        }).then(() => { notifBadge.style.display = 'none'; });
+                    }
+                }
+            });
+        }
+
         document.addEventListener('click', function(e) {
             if (profileBtn && !profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) { profileDropdown.classList.remove('open'); }
             if (cartContainer && !cartContainer.contains(e.target) && cartDropdown) { cartDropdown.classList.remove('open'); }
+            if (notifContainer && !notifContainer.contains(e.target) && notifDropdown) { notifDropdown.classList.remove('open'); }
         });
 
+        // --- Alt Navbar Animasyon ---
         const subNavbar = document.getElementById('subNavbar');
         const items = subNavbar.querySelectorAll('a');
         const indicator = document.getElementById('navIndicator');
@@ -400,32 +465,9 @@ if ($is_logged_in) {
 
         items.forEach(item => {
             item.addEventListener('click', function(e) {
-                e.preventDefault(); 
-                const targetUrl = this.getAttribute('href');
-                setIndicator(this, true);
-
-                fetch(targetUrl)
-                    .then(response => response.text())
-                    .then(html => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
-                        const newContent = doc.querySelector('.page-content');
-                        if(newContent) {
-                            document.querySelector('.page-content').innerHTML = newContent.innerHTML;
-                            const scripts = document.querySelector('.page-content').querySelectorAll('script');
-                            scripts.forEach(oldScript => {
-                                const newScript = document.createElement('script');
-                                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                                oldScript.parentNode.replaceChild(newScript, oldScript);
-                            });
-                            window.history.pushState({path: targetUrl}, '', targetUrl);
-                        }
-                    })
-                    .catch(error => console.error('Sayfa yüklenirken hata:', error));
+                // Not: Hatalı route'ları çözmek için AJAX'i isteğe bağlı tuttuk. 
+                // İhtiyacın varsa AJAX fetch mantığı eklenebilir, şu an default redirect çalışacak.
             });
         });
-        
-        window.addEventListener('popstate', function() { window.location.reload(); });
     });
 </script>
