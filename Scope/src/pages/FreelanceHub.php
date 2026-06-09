@@ -7,19 +7,37 @@ usort($jobs, function($a, $b) { return strtotime($b['created_at']) - strtotime($
 
 $my_postings = 0;
 $my_active_jobs = 0;
+$filter_mode = isset($_GET['filter']) ? $_GET['filter'] : '';
+$filtered_jobs = [];
 
 if (isset($_SESSION['is_logged_in'])) {
     foreach($jobs as $j) {
-        if ($j['author_id'] === $_SESSION['user_id']) $my_postings++;
-        if ($j['status'] === 'in_progress' && isset($j['accepted_bid']) && $j['accepted_bid']['user_id'] === $_SESSION['user_id']) {
-            $my_active_jobs++;
+        $is_author = ($j['author_id'] === $_SESSION['user_id']);
+        $is_accepted_freelancer = (isset($j['accepted_bid']) && $j['accepted_bid']['user_id'] === $_SESSION['user_id']);
+        $is_mine = $is_author || $is_accepted_freelancer;
+
+        if ($is_author) $my_postings++;
+        if ($j['status'] === 'in_progress' && $is_accepted_freelancer) $my_active_jobs++;
+
+        // Görünürlük Kuralı 1: Tamamlanmış işleri, sadece sahibi veya yapanı görür.
+        if ($j['status'] === 'completed' && !$is_mine) continue;
+
+        // Kural 2: Filtre aktifse
+        if ($filter_mode === 'my_jobs') {
+            if ($is_mine) $filtered_jobs[] = $j;
+        } else {
+            $filtered_jobs[] = $j;
         }
+    }
+} else {
+    // Giriş yapmayanlara sadece AÇIK ve İŞLEMDE olanlar (Tamamlanmışlar gizli)
+    foreach($jobs as $j) {
+        if ($j['status'] !== 'completed') $filtered_jobs[] = $j;
     }
 }
 ?>
 
 <div class="home-wrapper" style="width: 100%; position: relative; overflow: hidden; min-height: 100vh;">
-
     <div class="floating-particles">
         <div class="particle p-1">$</div> <div class="particle p-2">✕</div> <div class="particle p-3">◯</div> <div class="particle p-4">&lt;/&gt;</div> <div class="particle p-5">✦</div>
         <div class="particle p-11">{}</div> <div class="particle p-12">◯</div> <div class="particle p-13">$</div> <div class="particle p-14">✕</div> <div class="particle p-15">&lt;/&gt;</div>
@@ -30,15 +48,10 @@ if (isset($_SESSION['is_logged_in'])) {
     <style>
         body .page-content { padding: 0 !important; margin: 0 !important; }
         
-        /* Animasyon CSS */
         .floating-particles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
         .particle { position: absolute; color: rgba(255, 255, 255, 0.08); font-size: 28px; font-weight: 900; animation: fall linear infinite; }
         .particle:nth-child(odd) { color: rgba(243, 156, 18, 0.08); }
-        @keyframes fall {
-            0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; } 90% { opacity: 1; }
-            100% { transform: translateY(120vh) rotate(360deg); opacity: 0; }
-        }
+        @keyframes fall { 0% { transform: translateY(-50px) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(120vh) rotate(360deg); opacity: 0; } }
         .p-1 { left: 3%; animation-duration: 15s; animation-delay: -5s; font-size: 32px;}
         .p-2 { left: 9%; animation-duration: 22s; animation-delay: -14s; }
         .p-3 { left: 14%; animation-duration: 18s; animation-delay: -2s; font-size: 24px;}
@@ -83,8 +96,10 @@ if (isset($_SESSION['is_logged_in'])) {
         .stat-row:last-child { border: none; }
         .stat-row span { color: #8b949e; font-size: 0.95rem; }
         .stat-row strong { color: #f39c12; font-size: 1.1rem; }
-        .create-btn { display: block; width: 100%; text-align: center; background: #f39c12; color: #111; padding: 12px 0; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 20px; transition: 0.3s; }
+        .create-btn { display: block; width: 100%; text-align: center; background: #f39c12; color: #111; padding: 12px 0; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 10px; transition: 0.3s; }
         .create-btn:hover { background: #d68910; }
+        .my-jobs-btn { display: block; width: 100%; text-align: center; background: transparent; color: #8b949e; padding: 10px 0; border: 1px solid #333; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 20px; transition: 0.3s; }
+        .my-jobs-btn:hover { border-color: #f39c12; color: white; background: rgba(243, 156, 18, 0.1); }
 
         body.light-mode .com-header, body.light-mode .job-card, body.light-mode .mini-profile { background: rgba(255, 255, 255, 0.9); border-color: rgba(0,0,0,0.05); }
         body.light-mode .job-info h3, body.light-mode .mini-profile h2 { color: #0f172a; }
@@ -92,6 +107,8 @@ if (isset($_SESSION['is_logged_in'])) {
         body.light-mode .stat-row strong { color: #3b82f6; }
         body.light-mode .create-btn { background: #3b82f6; color: white; }
         body.light-mode .create-btn:hover { background: #2563eb; }
+        body.light-mode .my-jobs-btn { border-color: #cbd5e1; color: #64748b; }
+        body.light-mode .my-jobs-btn:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.05); }
         body.light-mode .particle { color: rgba(59, 130, 246, 0.18); }
         body.light-mode .particle:nth-child(odd) { color: rgba(15, 23, 42, 0.12); }
     </style>
@@ -99,17 +116,19 @@ if (isset($_SESSION['is_logged_in'])) {
     <div class="com-layout">
         <div class="com-main">
             <div class="com-header">
-                <h2 style="color:inherit; margin:0;">Freelance İlanları</h2>
+                <h2 style="color:inherit; margin:0;">
+                    <?php echo $filter_mode === 'my_jobs' ? 'Benim İlanlarım ve İşlerim' : 'Freelance İlanları'; ?>
+                </h2>
                 <p style="color:#8b949e; margin:0;">Yeteneklerini paraya dönüştür veya projeni uzmanlara yaptır.</p>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:15px;">
-                <?php if(empty($jobs)): ?>
+                <?php if(empty($filtered_jobs)): ?>
                     <div style="padding: 40px; text-align:center; color:#8b949e; border:1px dashed rgba(255,255,255,0.1); border-radius:12px; backdrop-filter: blur(10px);">
-                        Henüz hiç ilan oluşturulmamış.
+                        Kritere uygun ilan bulunamadı.
                     </div>
                 <?php else: ?>
-                    <?php foreach($jobs as $job): ?>
+                    <?php foreach($filtered_jobs as $job): ?>
                         <a href="jobdetail?id=<?php echo $job['id']; ?>" class="job-card">
                             <div class="job-info">
                                 <h3><?php echo htmlspecialchars($job['title']); ?></h3>
@@ -146,7 +165,13 @@ if (isset($_SESSION['is_logged_in'])) {
                         <span>Aldığım İşler:</span>
                         <strong><?php echo $my_active_jobs; ?></strong>
                     </div>
+                    
+                    <a href="freelancehub?filter=my_jobs" class="my-jobs-btn">Benim İşlerim</a>
                     <a href="createjob" class="create-btn">Yeni İlan Oluştur</a>
+                    
+                    <?php if($filter_mode === 'my_jobs'): ?>
+                        <a href="freelancehub" style="color:#8b949e; font-size:12px; margin-top:10px; display:block;">Filtreyi Temizle</a>
+                    <?php endif; ?>
                 <?php else: ?>
                     <h2>Hoş Geldin!</h2>
                     <p style="color:#8b949e; font-size:14px;">İlan vermek veya iş almak için giriş yapmalısın.</p>

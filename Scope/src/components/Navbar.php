@@ -2,19 +2,22 @@
 $is_logged_in = isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in'] === true;
 $current_page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
 
-// --- SEPET VE BİLDİRİM VERİLERİNİ ÇEKME ---
+// --- SEPET, BİLDİRİM VE MESAJ VERİLERİNİ ÇEKME ---
 $cart_items = [];
 $cart_total = 0;
 $user_cart_ids = [];
 $notifications = [];
 $unread_notifs = 0;
+$unread_messages = 0;
 
 if ($is_logged_in) {
     $users_db_path = __DIR__ . '/../../backend/database/users_data.json';
     $products_db_path = __DIR__ . '/../../backend/database/product_data.json';
+    $social_db_path = __DIR__ . '/../../backend/database/social_data.json';
     
     $users_db = file_exists($users_db_path) ? json_decode(file_get_contents($users_db_path), true) ?: [] : [];
     $products_db = file_exists($products_db_path) ? json_decode(file_get_contents($products_db_path), true) ?: [] : [];
+    $social_db = file_exists($social_db_path) ? json_decode(file_get_contents($social_db_path), true) ?: [] : [];
     
     foreach($users_db as $u) {
         if (isset($_SESSION['user_id']) && $u['id'] === $_SESSION['user_id']) {
@@ -27,24 +30,36 @@ if ($is_logged_in) {
     
     foreach($user_cart_ids as $cid) {
         foreach($products_db as $p) {
-            if ($p['id'] === $cid) {
-                $cart_items[] = $p;
-                $cart_total += (float)$p['price_total'];
-                break;
-            }
+            if ($p['id'] === $cid) { $cart_items[] = $p; $cart_total += (float)$p['price_total']; break; }
+        }
+    }
+
+    // DÜZELTİLDİ: Düz mesaj veritabanından okunmamış mesajları say
+    foreach($social_db as $msg) {
+        // Eğer mesajın alıcısı bizsek ve mesaj okunmamışsa sayacı artır
+        if (isset($msg['receiver_id']) && $msg['receiver_id'] === $_SESSION['user_id'] && empty($msg['read'])) {
+            $unread_messages++;
         }
     }
 }
 ?>
 
 <script>
+    // FOUC ENGELLEYİCİ: Geçiş animasyonlarını sayfa yüklenene kadar durdur, body'ye sınıfı anında ver!
+    document.documentElement.classList.add('preload-transitions');
     if (localStorage.getItem('theme') === 'light') {
         document.documentElement.classList.add('light-mode');
-        window.addEventListener('DOMContentLoaded', () => document.body.classList.add('light-mode'));
+        document.body.classList.add('light-mode');
     }
+    window.addEventListener('load', () => {
+        document.documentElement.classList.remove('preload-transitions');
+    });
 </script>
 
 <style>
+    /* PRELOAD GEÇİŞ ENGELLEME */
+    .preload-transitions * { transition: none !important; }
+
     body { background-color: #0d0d0f; color: #ffffff; background-image: radial-gradient(circle at 0% 0%, rgba(68, 17, 60, 0.3) 0%, transparent 40%), radial-gradient(circle at 100% 100%, rgba(145, 60, 30, 0.2) 0%, transparent 50%); background-attachment: fixed; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; transition: background-color 0.4s ease, color 0.4s ease; }
     
     .announcement-bar { position: relative; height: 35px; background: #0a0a0c; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: background-color 0.4s ease; }
@@ -68,6 +83,10 @@ if ($is_logged_in) {
     .nav-icons { display: flex; align-items: center; gap: 15px; margin-right: 10px; }
     .nav-icons a { color: #b0b0b0; transition: color 0.2s; display: flex; align-items: center; position: relative;}
     .nav-icons a:hover { color: #f39c12; }
+    
+    /* İkon Baloncukları */
+    .icon-badge { position: absolute; top: -6px; right: -8px; background: #e74c3c; color: white; font-size: 10px; font-weight: bold; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+    .icon-badge.cart-color { background: #f39c12; color: #111; }
 
     .login-text-btn { color: #e0e0e0; text-decoration: none; font-weight: 500; font-size: 15px; cursor: pointer; transition: color 0.2s; }
     .login-text-btn:hover { color: #f39c12; }
@@ -86,7 +105,6 @@ if ($is_logged_in) {
 
     /* ================= SEPET DROPDOWN ================= */
     .cart-container { position: relative; display: flex; align-items: center; }
-    .cart-badge { position: absolute; top: -6px; right: -8px; background: #f39c12; color: #111; font-size: 10px; font-weight: bold; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
     .cart-dropdown { display: none; position: absolute; top: 40px; right: 0; width: 320px; background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1002; flex-direction: column; overflow: hidden; }
     .cart-dropdown.open { display: flex; }
     .cart-header { padding: 12px 15px; border-bottom: 1px solid #30363d; font-size: 13px; color: #8b949e; font-weight: bold; }
@@ -107,7 +125,6 @@ if ($is_logged_in) {
 
     /* ================= BİLDİRİM DROPDOWN ================= */
     .notif-container { position: relative; display: flex; align-items: center; }
-    .notif-badge { position: absolute; top: -6px; right: -8px; background: #e74c3c; color: white; font-size: 10px; font-weight: bold; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
     .notif-dropdown { display: none; position: absolute; top: 40px; right: -60px; width: 300px; background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1002; flex-direction: column; overflow: hidden; }
     .notif-dropdown.open { display: flex; }
     .notif-header { padding: 12px 15px; border-bottom: 1px solid #30363d; font-size: 13px; color: #8b949e; font-weight: bold; display: flex; justify-content: space-between; }
@@ -213,7 +230,7 @@ if ($is_logged_in) {
                         <a href="javascript:void(0)" id="cartBtn" title="Sepet">
                             <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                             <?php if(!empty($user_cart_ids)): ?>
-                                <span class="cart-badge"><?php echo count($user_cart_ids); ?></span>
+                                <span class="icon-badge cart-color"><?php echo count($user_cart_ids); ?></span>
                             <?php endif; ?>
                         </a>
 
@@ -240,34 +257,34 @@ if ($is_logged_in) {
                                             </button>
                                         </div>
                                     <?php endforeach; ?>
-                                    
                                     <?php if(count($cart_items) > 3): ?>
                                         <div class="cart-more">+<?php echo count($cart_items)-3; ?> ürün daha</div>
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </div>
-                            
                             <div class="cart-footer">
-                                <div class="cart-total-row">
-                                    <span>Ara Toplam:</span>
-                                    <span><?php echo $cart_total; ?> $</span>
-                                </div>
+                                <div class="cart-total-row"><span>Ara Toplam:</span><span><?php echo $cart_total; ?> $</span></div>
                                 <a href="checkout" class="cart-checkout-btn">Ödemeye Git</a>
                             </div>
                         </div>
                     </div>
 
+                    <a href="social" title="Mesajlar" style="margin-right:15px; position:relative;">
+                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        <?php if($unread_messages > 0): ?>
+                            <span class="icon-badge" style="background:#3498db;"><?php echo $unread_messages; ?></span>
+                        <?php endif; ?>
+                    </a>
+
                     <div class="notif-container" id="notifContainer" style="margin-right:15px;">
                         <a href="javascript:void(0)" id="notifBtn" title="Bildirimler">
                             <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                             <?php if($unread_notifs > 0): ?>
-                                <span class="notif-badge" id="notifBadge"><?php echo $unread_notifs; ?></span>
+                                <span class="icon-badge" id="notifBadge"><?php echo $unread_notifs; ?></span>
                             <?php endif; ?>
                         </a>
                         <div class="notif-dropdown" id="notifDropdown">
-                            <div class="notif-header">
-                                <span>Bildirimler</span>
-                            </div>
+                            <div class="notif-header"><span>Bildirimler</span></div>
                             <div class="notif-items-wrapper">
                                 <?php if(empty($notifications)): ?>
                                     <div class="notif-empty">Hiç bildiriminiz yok.</div>
@@ -330,11 +347,9 @@ if ($is_logged_in) {
 <script>
     function removeFromCart(productId) {
         if(!confirm('Ürünü sepetinizden çıkarmak istediğinize emin misiniz?')) return;
-        
         const formData = new FormData();
         formData.append('action', 'remove_from_cart');
         formData.append('product_id', productId);
-
         fetch('index.php', { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => { if(data.status === 'success') { window.location.reload(); } })
@@ -342,7 +357,6 @@ if ($is_logged_in) {
     }
 
     document.addEventListener("DOMContentLoaded", function() {
-        // --- Tema İşlemleri ---
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const themeIcon = document.getElementById('themeIcon');
         const moonPath = 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z';
@@ -353,6 +367,7 @@ if ($is_logged_in) {
             themeToggleBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 document.body.classList.toggle('light-mode');
+                document.documentElement.classList.toggle('light-mode');
                 if (document.body.classList.contains('light-mode')) {
                     localStorage.setItem('theme', 'light'); themeIcon.innerHTML = sunPaths;
                 } else {
@@ -361,7 +376,6 @@ if ($is_logged_in) {
             });
         }
 
-        // --- Duyurular ---
         const announcements = document.querySelectorAll('.announcement-text');
         if (announcements.length > 0) {
             let currentAnnounce = 0; announcements[currentAnnounce].classList.add('show');
@@ -375,7 +389,6 @@ if ($is_logged_in) {
             }
         }
 
-        // --- Açılır Menüler (Sepet, Bildirim, Profil) ---
         const profileBtn = document.getElementById('profileBtn');
         const profileDropdown = document.getElementById('profileDropdown');
         const cartBtn = document.getElementById('cartBtn');
@@ -394,35 +407,27 @@ if ($is_logged_in) {
 
         if (profileBtn) {
             profileBtn.addEventListener('click', function(e) {
-                e.stopPropagation(); 
-                const isOpen = profileDropdown.classList.contains('open');
-                closeAllDropdowns();
-                if(!isOpen) profileDropdown.classList.add('open');
+                e.stopPropagation(); const isOpen = profileDropdown.classList.contains('open');
+                closeAllDropdowns(); if(!isOpen) profileDropdown.classList.add('open');
             });
         }
         
         if (cartBtn) {
             cartBtn.addEventListener('click', function(e) {
-                e.stopPropagation(); 
-                const isOpen = cartDropdown.classList.contains('open');
-                closeAllDropdowns();
-                if(!isOpen) cartDropdown.classList.add('open');
+                e.stopPropagation(); const isOpen = cartDropdown.classList.contains('open');
+                closeAllDropdowns(); if(!isOpen) cartDropdown.classList.add('open');
             });
         }
 
         if (notifBtn) {
             notifBtn.addEventListener('click', function(e) {
-                e.stopPropagation(); 
-                const isOpen = notifDropdown.classList.contains('open');
+                e.stopPropagation(); const isOpen = notifDropdown.classList.contains('open');
                 closeAllDropdowns();
                 if(!isOpen) {
                     notifDropdown.classList.add('open');
                     if (notifBadge) {
-                        fetch('index.php', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                            body: 'action=read_notifications'
-                        }).then(() => { notifBadge.style.display = 'none'; });
+                        fetch('index.php', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'action=read_notifications' })
+                        .then(() => { notifBadge.style.display = 'none'; });
                     }
                 }
             });
@@ -434,7 +439,6 @@ if ($is_logged_in) {
             if (notifContainer && !notifContainer.contains(e.target) && notifDropdown) { notifDropdown.classList.remove('open'); }
         });
 
-        // --- Alt Navbar Animasyon ---
         const subNavbar = document.getElementById('subNavbar');
         const items = subNavbar.querySelectorAll('a');
         const indicator = document.getElementById('navIndicator');
@@ -444,30 +448,19 @@ if ($is_logged_in) {
             if (!element) return;
             items.forEach(i => i.classList.remove('active'));
             element.classList.add('active'); activeItem = element;
-
             if (element.classList.contains('add-product-btn')) {
                 indicator.classList.add('is-add'); indicator.style.width = '0px'; return;
             } else { indicator.classList.remove('is-add'); }
 
             const indicatorWidth = 18; 
             const offsetLeft = element.offsetLeft + (element.offsetWidth / 2) - (indicatorWidth / 2);
-
             if (!animate) { indicator.style.transition = 'none'; }
             indicator.style.width = `${indicatorWidth}px`; indicator.style.transform = `translateX(${offsetLeft}px)`;
-
             if (!animate) {
                 void indicator.offsetWidth; 
                 indicator.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), width 0.4s ease';
             }
         }
-
         if (activeItem) { setIndicator(activeItem, false); }
-
-        items.forEach(item => {
-            item.addEventListener('click', function(e) {
-                // Not: Hatalı route'ları çözmek için AJAX'i isteğe bağlı tuttuk. 
-                // İhtiyacın varsa AJAX fetch mantığı eklenebilir, şu an default redirect çalışacak.
-            });
-        });
     });
 </script>
