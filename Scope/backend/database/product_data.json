@@ -14,7 +14,8 @@
             "backend\/database\/Products\/6a255c1e8104f\/Images\/gorsel_2.png"
         ],
         "product_file": "backend\/database\/Products\/6a255c1e8104f\/Files\/chevalier-sword.zip",
-        "created_at": "2026-06-07 13:55:10"
+        "created_at": "2026-06-07 13:55:10",
+        "status": "approved"
     },
     {
         "id": "6a255c7f78813",
@@ -38,21 +39,23 @@
                 "comment": "Hangi mozart yazd\u0131 bunu \u00e7ok g\u00fczel",
                 "date": "2026-06-07"
             }
-        ]
+        ],
+        "status": "approved"
     },
     {
         "id": "6a255d07d94c4",
         "name": "G\u00fczel bir logo ",
         "description": "yapay zeka ile yap\u0131ld\u0131\u011f\u0131 asla belli olmayan el \u00e7izmi bir logo",
         "type": "graphics",
-        "price_total": 15,
+        "price_total": 50,
         "price_seller": 14.55,
         "seller_username": "deneme",
         "seller_id": "6a02f17559341",
         "cover_image": "backend\/database\/Products\/6a255d07d94c4\/Images\/title_image.png",
         "gallery": [],
         "product_file": "backend\/database\/Products\/6a255d07d94c4\/Files\/ucgen.jpg",
-        "created_at": "2026-06-07 13:59:03"
+        "created_at": "2026-06-07 13:59:03",
+        "status": "approved"
     },
     {
         "id": "6a255ddc1e730",
@@ -75,7 +78,8 @@
                 "comment": "kat\u0131l\u0131yorum 75 kuru\u015f ger\u00e7ektir bizi kand\u0131raya \u00e7al\u0131\u015f\u0131yorlar",
                 "date": "2026-06-07"
             }
-        ]
+        ],
+        "status": "approved"
     },
     {
         "id": "6a2590ef5d743",
@@ -101,7 +105,8 @@
                 "comment": "Bu nas\u0131 yaz\u0131 stili olum hi\u00e7 be\u011fenmedim 2 puan veriyorum oda ismi cih oldu\u011fu i\u00e7in",
                 "date": "2026-06-07"
             }
-        ]
+        ],
+        "status": "approved"
     },
     {
         "id": "6a259940a41ac",
@@ -120,6 +125,24 @@
         "product_file": "backend\/database\/Products\/6a259940a41ac\/Files\/US_one_dollar_bill,_obverse,_series_2009.jpg",
         "units_sold": 0,
         "reviews": [],
-        "created_at": "2026-06-07 18:16:00"
+        "created_at": "2026-06-07 18:16:00",
+        "status": "approved"
+    },
+    {
+        "id": "6a285b48751ce",
+        "name": "asdasd",
+        "description": "asdasd",
+        "type": "plugin",
+        "price_total": 2000,
+        "price_seller": 1940,
+        "seller_username": "deneme",
+        "seller_id": "6a02f17559341",
+        "cover_image": "backend\/database\/Products\/6a285b48751ce\/Images\/title_image.png",
+        "gallery": [],
+        "product_file": "backend\/database\/Products\/6a285b48751ce\/Files\/ucgen.jpg",
+        "created_at": "2026-06-09 20:28:24",
+        "units_sold": 0,
+        "reviews": [],
+        "status": "approved"
     }
 ]

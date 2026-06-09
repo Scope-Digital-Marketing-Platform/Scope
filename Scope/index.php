@@ -152,7 +152,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $updated = true; break;
             }
         }
-        if ($updated) { file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT)); echo "success"; } else { echo "error"; } exit;
+        
+        if ($updated) { 
+            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT)); 
+            
+            // Beyaz ekran yerine ürünün detay sayfasına geri yönlendiriyoruz
+            $base_url = str_replace('index.php', '', $_SERVER['SCRIPT_NAME']);
+            $redirect_path = ltrim($base_url, '/') . "productdetail?id=" . urlencode($product_id);
+            header("Location: /" . $redirect_path);
+        } else { 
+            echo "<script>alert('Ürün güncellenirken bir hata oluştu!'); window.history.back();</script>"; 
+        } 
+        exit;
     }
 
     if ($action === 'add_to_cart' && isset($_SESSION['user_id'])) {
@@ -293,8 +304,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'delete_topic' && isset($_SESSION['user_id'])) {
         $topics = file_exists($topic_db) ? json_decode(file_get_contents($topic_db), true) ?: [] : [];
         $topic_id = $_POST['topic_id'];
-        $topics = array_values(array_filter($topics, function($t) use ($topic_id) { return !($t['id'] === $topic_id && $t['author_id'] === $_SESSION['user_id']); }));
-        file_put_contents($topic_db, json_encode($topics, JSON_PRETTY_PRINT)); header("Location: community"); exit;
+        
+        // 1. Konuyu topics_data.json'dan sil
+        $topics = array_values(array_filter($topics, function($t) use ($topic_id) { 
+            return !($t['id'] === $topic_id && $t['author_id'] === $_SESSION['user_id']); 
+        }));
+        file_put_contents($topic_db, json_encode($topics, JSON_PRETTY_PRINT)); 
+        
+        // 2. Kullanıcının created_topics listesinden sil
+        foreach ($users as &$u) {
+            if ($u['id'] === $_SESSION['user_id']) {
+                if (isset($u['created_topics'])) {
+                    // Konu ID'sini kullanıcının listesinden çıkar
+                    $u['created_topics'] = array_values(array_filter($u['created_topics'], function($id) use ($topic_id) {
+                        return $id !== $topic_id;
+                    }));
+                }
+                break;
+            }
+        }
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
+        
+        header("Location: community"); 
+        exit;
     }
 
     if ($action === 'add_reply' && isset($_SESSION['user_id'])) {

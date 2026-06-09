@@ -20,13 +20,25 @@ if ($filter_mode === 'my_topics' && isset($_SESSION['user_id'])) {
 
 $user_created_count = 0;
 $user_replied_count = 0;
+
 if (isset($_SESSION['is_logged_in'])) {
-    $users = file_exists($users_db_path) ? json_decode(file_get_contents($users_db_path), true) ?: [] : [];
-    foreach ($users as $u) {
-        if ($u['id'] === $_SESSION['user_id']) {
-            $user_created_count = count($u['created_topics'] ?? []);
-            $user_replied_count = count($u['replied_topics'] ?? []);
-            break;
+    // Sayacı sadece gerçekten var olan (silinmemiş) konular üzerinden hesapla
+    foreach ($topics as $t) {
+        if ($t['author_id'] === $_SESSION['user_id']) {
+            $user_created_count++;
+        }
+        // Kullanıcının bu konuya yanıt verip vermediğini kontrol et
+        $has_replied = false;
+        if (isset($t['replies'])) {
+            foreach ($t['replies'] as $reply) {
+                if ($reply['user_id'] === $_SESSION['user_id']) {
+                    $has_replied = true;
+                    break;
+                }
+            }
+        }
+        if ($has_replied) {
+            $user_replied_count++;
         }
     }
 }
@@ -157,7 +169,7 @@ if (isset($_SESSION['is_logged_in'])) {
                     <p>Topluluktaki aktif istatistiklerin:</p>
                     
                     <div class="stat-row">
-                        <span>Oluşturduğun Konular:</span>
+                        <span>Oluşturulan Konular:</span>
                         <strong><?php echo $user_created_count; ?></strong>
                     </div>
                     <div class="stat-row">

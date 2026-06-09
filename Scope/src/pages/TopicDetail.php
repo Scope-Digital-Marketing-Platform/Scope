@@ -77,8 +77,13 @@ $can_delete_any = in_array('all_access', $user_permissions);
         </div>
         
         <div class="td-meta">
-            Oluşturan: <strong>@<?php echo htmlspecialchars($current_topic['author_username']); ?></strong> | 
-            Tarih: <?php echo date('d.m.Y H:i', strtotime($current_topic['created_at'])); ?>
+                Oluşturan: 
+                <strong>
+                    <a href="profile?user=<?php echo urlencode($current_topic['author_username']); ?>" style="color: #f39c12; text-decoration: none;">
+                    @<?php echo htmlspecialchars($current_topic['author_username']); ?>
+                    </a>
+                </strong> 
+                | Tarih: <?php echo date('d.m.Y H:i', strtotime($current_topic['created_at'])); ?>
         </div>
         <div class="td-content"><?php echo htmlspecialchars($current_topic['content']); ?></div>
         

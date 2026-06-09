@@ -18,7 +18,18 @@
         "receiver_username": "deneme",
         "message": "sanada selam",
         "file": null,
-        "read": false,
+        "read": true,
         "date": "2026-06-09 19:03:30"
+    },
+    {
+        "id": "msg_6a2854a62e875",
+        "sender_id": "6a02f17559341",
+        "sender_username": "deneme",
+        "receiver_id": "6a2550dc1a7a6",
+        "receiver_username": "al\u0131c\u0131",
+        "message": "Aleyk\u00fcm selam",
+        "file": null,
+        "read": false,
+        "date": "2026-06-09 20:00:06"
     }
 ]

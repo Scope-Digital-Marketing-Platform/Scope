@@ -29,5 +29,50 @@
             "date": "2026-06-09 05:07:22"
         },
         "created_at": "2026-06-09 05:05:04"
+    },
+    {
+        "id": "job_6a2853f9364d8",
+        "title": "aa",
+        "description": "aaa",
+        "budget": 1000,
+        "author_id": "ADMIN_ROOT",
+        "author_username": "Sistem Y\u00f6neticisi",
+        "status": "completed",
+        "bids": [
+            {
+                "user_id": "6a02f17559341",
+                "username": "deneme",
+                "amount": 800,
+                "message": "sds",
+                "date": "2026-06-09 20:21:01"
+            },
+            {
+                "user_id": "6a02f17559341",
+                "username": "deneme",
+                "amount": 8000,
+                "message": "asdasd",
+                "date": "2026-06-09 20:29:29"
+            },
+            {
+                "user_id": "6a02f17559341",
+                "username": "deneme",
+                "amount": 10,
+                "message": "asdf",
+                "date": "2026-06-09 20:29:37"
+            }
+        ],
+        "accepted_bid": {
+            "user_id": "6a02f17559341",
+            "username": "deneme",
+            "amount": 800,
+            "message": "sds",
+            "date": "2026-06-09 20:21:01"
+        },
+        "delivery": {
+            "message": "asdasd",
+            "file": "backend\/database\/Freelance\/job_6a2853f9364d8\/delivery_1781029845.jpg",
+            "date": "2026-06-09 20:30:45"
+        },
+        "created_at": "2026-06-09 19:57:13"
     }
 ]

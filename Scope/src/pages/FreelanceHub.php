@@ -96,7 +96,7 @@ if (isset($_SESSION['is_logged_in'])) {
         .stat-row:last-child { border: none; }
         .stat-row span { color: #8b949e; font-size: 0.95rem; }
         .stat-row strong { color: #f39c12; font-size: 1.1rem; }
-        .create-btn { display: block; width: 100%; text-align: center; background: #f39c12; color: #111; padding: 12px 0; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 10px; transition: 0.3s; }
+        .create-btn { display: block; width: 100%; text-align: center; background: #f39c12; color: #111; padding: 12px 0; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 10px; transition: 0.3s; cursor: pointer; }
         .create-btn:hover { background: #d68910; }
         .my-jobs-btn { display: block; width: 100%; text-align: center; background: transparent; color: #8b949e; padding: 10px 0; border: 1px solid #333; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 20px; transition: 0.3s; }
         .my-jobs-btn:hover { border-color: #f39c12; color: white; background: rgba(243, 156, 18, 0.1); }
@@ -158,7 +158,7 @@ if (isset($_SESSION['is_logged_in'])) {
                 <?php if(isset($_SESSION['is_logged_in'])): ?>
                     <h2>Freelance Özeti</h2>
                     <div class="stat-row">
-                        <span>Açtığım İlanlar:</span>
+                        <span>Açılan İlanlar:</span>
                         <strong><?php echo $my_postings; ?></strong>
                     </div>
                     <div class="stat-row">
@@ -175,7 +175,7 @@ if (isset($_SESSION['is_logged_in'])) {
                 <?php else: ?>
                     <h2>Hoş Geldin!</h2>
                     <p style="color:#8b949e; font-size:14px;">İlan vermek veya iş almak için giriş yapmalısın.</p>
-                    <a href="home" class="create-btn" style="background:#333; color:white;">Giriş Yap</a>
+                    <a onclick="openAuthModal('login')" class="create-btn" style="background:#333; color:white;">Giriş Yap</a>
                 <?php endif; ?>
             </div>
         </div>

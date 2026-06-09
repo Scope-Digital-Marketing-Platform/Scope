@@ -1,3 +1,23 @@
+<?php
+$product_db = __DIR__ . '/../../backend/database/product_data.json';
+$topic_db = __DIR__ . '/../../backend/database/topics_data.json';
+
+// Ürünleri Çek ve En Çok Satana Göre Sırala
+$products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
+usort($products, function($a, $b) {
+    return ($b['units_sold'] ?? 0) - ($a['units_sold'] ?? 0);
+});
+// BURASI 4'TEN 6'YA ÇIKARILDI
+$top_products = array_slice($products, 0, 6); 
+
+// Konuları Çek ve 1 Rastgele Seç
+$topics = file_exists($topic_db) ? json_decode(file_get_contents($topic_db), true) ?: [] : [];
+$random_topic = null;
+if (!empty($topics)) {
+    $random_topic = $topics[array_rand($topics)];
+}
+?>
+
 <div class="home-wrapper" style="width: 100%; position: relative; overflow: hidden; min-height: 100vh;">
 
     <div class="floating-particles">
@@ -8,18 +28,12 @@
     </div>
     
     <style>
-        /* Genel Konteyner */
         .home-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; position: relative; z-index: 10; }
         
-        /* Partikül Animasyonları */
         .floating-particles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
         .particle { position: absolute; color: rgba(255, 255, 255, 0.08); font-size: 28px; font-weight: 900; animation: fall linear infinite; }
         .particle:nth-child(odd) { color: rgba(243, 156, 18, 0.08); }
-        @keyframes fall {
-            0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; } 90% { opacity: 1; }
-            100% { transform: translateY(120vh) rotate(360deg); opacity: 0; }
-        }
+        @keyframes fall { 0% { transform: translateY(-50px) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(120vh) rotate(360deg); opacity: 0; } }
         
         .p-1 { left: 3%; animation-duration: 15s; animation-delay: -5s; font-size: 32px;}
         .p-2 { left: 9%; animation-duration: 22s; animation-delay: -14s; }
@@ -42,17 +56,7 @@
         .p-19 { left: 85%; animation-duration: 15s; animation-delay: -13s; font-size: 34px;}
         .p-20 { left: 91%; animation-duration: 23s; animation-delay: -8s; font-size: 27px;}
 
-        /* --- HERO (KARŞILAMA) ALANI - TAM EKRAN --- */
-        .hero-section { 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            text-align: center; 
-            min-height: 80vh; /* Ekranın altından biraz yukarıda bitmesi için küçültüldü */
-            position: relative;
-            padding-bottom: 40px;
-        }
+        .hero-section { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; min-height: 80vh; position: relative; padding-bottom: 40px; }
         .hero-title { font-size: 3.5rem; font-weight: 800; margin-bottom: 20px; letter-spacing: -0.5px; transition: color 0.4s ease; }
         .hero-title span { color: #f39c12; }
         .hero-desc { color: #8b949e; font-size: 1.25rem; max-width: 650px; margin: 0 auto 40px auto; line-height: 1.6; transition: color 0.4s ease; }
@@ -63,29 +67,33 @@
         .btn-secondary { background-color: transparent; color: #fff; padding: 14px 32px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; text-decoration: none; border: 2px solid rgba(255,255,255,0.15); transition: all 0.3s; }
         .btn-secondary:hover { background-color: rgba(255,255,255,0.05); transform: translateY(-2px); }
 
-        /* Scroll İndikatörü (Aşağı Ok) */
-        .scroll-indicator {
-            position: absolute;
-            bottom: 0px; /* Yukarı çekildi */
-            color: #8b949e;
-            animation: bounce 2s infinite;
-            cursor: pointer;
-            transition: color 0.3s;
-        }
+        .scroll-indicator { position: absolute; bottom: 0px; color: #8b949e; animation: bounce 2s infinite; cursor: pointer; transition: color 0.3s; }
         .scroll-indicator:hover { color: #f39c12; }
         @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-15px); } 60% { transform: translateY(-7px); } }
 
-        /* --- PANELLER VE ALT İÇERİKLER --- */
         .content-wrapper { padding-top: 40px; padding-bottom: 80px; }
-        .home-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-bottom: 40px; }
+        .home-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-bottom: 40px; text-align: left; }
         @media (max-width: 992px) { .home-grid { grid-template-columns: 1fr; } }
 
         .panel { background: rgba(22, 27, 34, 0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 30px; backdrop-filter: blur(10px); transition: all 0.4s ease; }
         .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        .panel-title { font-size: 1.4rem; font-weight: 700; margin: 0; transition: color 0.4s ease; }
+        .panel-title { font-size: 1.4rem; font-weight: 700; margin: 0; color: white; transition: color 0.4s ease; }
+        .panel-header a { color: #8b949e; text-decoration: none; font-size: 0.95rem; transition: color 0.3s; }
+        .panel-header a:hover { color: #f39c12; }
         
-        .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .product-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
+        
+        /* Satış ve Konu Kartları Süslemesi */
+        .preview-card { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; display: block; text-decoration: none; transition: 0.3s;}
+        .preview-card:hover { transform: translateY(-3px); border-color: #f39c12; background: rgba(243, 156, 18, 0.05);}
+        .preview-img { width: 100%; height: 120px; background-size: cover; background-position: center; border-radius: 6px; margin-bottom: 10px; background-color: #222;}
+        .preview-title { color: white; font-size: 1rem; margin: 0 0 5px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
+        .preview-price { color: #2ecc71; font-weight: bold; font-size: 0.9rem;}
+        
+        .topic-preview { padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; text-decoration: none; display: block; transition: 0.3s;}
+        .topic-preview:hover { transform: translateY(-3px); border-color: #3498db; background: rgba(52, 152, 219, 0.05); }
+        .topic-preview h3 { color: white; margin: 0 0 10px 0;}
+        .topic-preview span { color: #8b949e; font-size: 0.85rem;}
 
         .earn-panel { text-align: center; display: flex; flex-direction: column; align-items: center; height: 100%; }
         .earn-icon { width: 70px; height: 70px; background: #f39c12; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; box-shadow: 0 0 20px rgba(243, 156, 18, 0.4); }
@@ -95,7 +103,6 @@
         .earn-buttons { display: flex; gap: 15px; width: 100%; margin-top: auto; }
         .earn-buttons a { flex: 1; text-align: center; padding: 12px 0; font-size: 1rem; }
 
-        /* --- LIGHT MODE (MAVİ & BEYAZ) --- */
         body.light-mode { background-color: #f0f4f8; color: #1e293b; background-image: radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.06) 0%, transparent 40%), radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.06) 0%, transparent 40%); }
         body.light-mode .panel { background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1); }
         body.light-mode .hero-title { color: #0f172a; }
@@ -111,10 +118,13 @@
         body.light-mode .particle:nth-child(odd) { color: rgba(15, 23, 42, 0.12); }
         body.light-mode .scroll-indicator { color: #64748b; }
         body.light-mode .scroll-indicator:hover { color: #3b82f6; }
+        body.light-mode .preview-card { background: #fff; border-color: #e2e8f0; }
+        body.light-mode .preview-title { color: #0f172a; }
+        body.light-mode .topic-preview { background: #fff; border-color: #e2e8f0; }
+        body.light-mode .topic-preview h3 { color: #0f172a; }
     </style>
 
     <main class="home-container">
-        
         <section class="hero-section">
             <h1 class="hero-title">Dijital yaratıcılığın yeni merkezi <span>Scope</span></h1>
             <p class="hero-desc">İhtiyacın olanı bul, uzmanlarla çalış ve hatta üret. 3D modellerden UI kitlerine kadar her şey tek platformda.</p>
@@ -134,23 +144,45 @@
             
             <div class="home-grid">
                 <div style="display: flex; flex-direction: column; gap: 30px;">
-                    <div class="panel">
-                        <div class="panel-header">
-                            <h2 class="panel-title">Popüler Paketler</h2>
-                            <a href="store" style="color: #8b949e; text-decoration: none; font-size: 0.95rem; transition: color 0.3s;" onmouseover="this.style.color='#f39c12'" onmouseout="this.style.color='#8b949e'">Tümünü Gör</a>
-                        </div>
-                        <div class="category-grid">
-                            <div style="padding: 20px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px; text-align: center; color: #8b949e;">Çok Yakında...</div>
-                        </div>
-                    </div>
+                    
                     <div class="panel">
                         <div class="panel-header">
                             <h2 class="panel-title">En Çok Satanlar</h2>
+                            <a href="store">Tümünü Gör</a>
                         </div>
                         <div class="product-grid">
-                            <div style="padding: 20px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px; text-align: center; color: #8b949e;">Satış Verileri Hesaplanıyor...</div>
+                            <?php if(empty($top_products)): ?>
+                                <p style="color:#8b949e; font-size:0.9rem;">Henüz ürün eklenmemiş.</p>
+                            <?php else: ?>
+                                <?php foreach($top_products as $prod): ?>
+                                    <?php $img = !empty($prod['cover_image']) ? $prod['cover_image'] : 'assets/images/default.jpg'; ?>
+                                    <a href="store" class="preview-card" title="<?php echo htmlspecialchars($prod['name']); ?>">
+                                        <div class="preview-img" style="background-image: url('<?php echo htmlspecialchars($img); ?>');"></div>
+                                        <h4 class="preview-title"><?php echo htmlspecialchars($prod['name']); ?></h4>
+                                        <span class="preview-price"><?php echo htmlspecialchars($prod['price_total']); ?> $</span>
+                                    </a>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                     </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">Konulara Göz At</h2>
+                            <a href="community">Topluluğa Git</a>
+                        </div>
+                        <div>
+                            <?php if(!$random_topic): ?>
+                                <p style="color:#8b949e; font-size:0.9rem;">Henüz konu açılmamış.</p>
+                            <?php else: ?>
+                                <a href="community" class="topic-preview">
+                                    <h3><?php echo htmlspecialchars($random_topic['title']); ?></h3>
+                                    <span>Yazar: @<?php echo htmlspecialchars($random_topic['author_username']); ?> • <?php echo count($random_topic['replies']); ?> Yanıt</span>
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
                 </div>
 
                 <div>

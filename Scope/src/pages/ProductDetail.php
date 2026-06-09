@@ -239,7 +239,7 @@ if (empty($images)) $images[] = 'assets/images/default.jpg';
     <div class="detail-right">
         <h1 class="product-title"><?php echo htmlspecialchars($product['name'] ?? 'İsimsiz Ürün'); ?></h1>
         
-        <a href="profile/<?php echo urlencode($publisher_username); ?>" class="publisher-box">
+        <a href="profile?user=<?php echo urlencode($publisher_username); ?>" class="publisher-box">
             <div class="publisher-avatar">
                 <img src="assets/images/default_avatar.png" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
             </div>
@@ -289,7 +289,7 @@ if (empty($images)) $images[] = 'assets/images/default.jpg';
 
         fetch(backendUrl, { method: 'POST', body: formData })
         .then(async response => {
-            const text = await response.text(); // Önce text olarak okuyoruz ki hata varsa çözelim
+            const text = await response.text(); 
             try {
                 return JSON.parse(text);
             } catch(e) {

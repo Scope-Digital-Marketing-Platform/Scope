@@ -18,18 +18,34 @@
         "role": "moderator",
         "cart": [],
         "assets": [
-            "6a2590ef5d743"
+            "6a2590ef5d743",
+            "6a285b48751ce"
         ],
         "created_topics": [
             "t_6a277ad4bf4d3",
-            "t_6a283b9b018f8"
+            "t_6a283b9b018f8",
+            "t_6a2858489ff04"
         ],
         "notifications": [
+            {
+                "id": "n_6a285be849d57",
+                "text": "@Sistem Y\u00f6neticisi teslimat\u0131n\u0131z\u0131 onaylad\u0131! Ba\u015far\u0131l\u0131 i\u015fler say\u0131n\u0131z artt\u0131.",
+                "link": "jobdetail?id=job_6a2853f9364d8",
+                "read": false,
+                "date": "2026-06-09 20:31:04"
+            },
+            {
+                "id": "n_6a285bb9a861c",
+                "text": "Tebrikler! @Sistem Y\u00f6neticisi teklifinizi kabul etti. \u0130\u015fe ba\u015flayabilirsiniz.",
+                "link": "jobdetail?id=job_6a2853f9364d8",
+                "read": true,
+                "date": "2026-06-09 20:30:17"
+            },
             {
                 "id": "n_6a2847629313d",
                 "text": "@al\u0131c\u0131 sana yeni bir mesaj g\u00f6nderdi.",
                 "link": "social?user=al%C4%B1c%C4%B1",
-                "read": false,
+                "read": true,
                 "date": "2026-06-09 19:03:30"
             },
             {
@@ -60,7 +76,8 @@
                 "read": true,
                 "date": "2026-06-09 05:05:52"
             }
-        ]
+        ],
+        "completed_jobs": 1
     },
     {
         "id": "6a2550dc1a7a6",
@@ -80,6 +97,13 @@
             "t_6a277ad4bf4d3"
         ],
         "notifications": [
+            {
+                "id": "n_6a2854a62e94d",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": false,
+                "date": "2026-06-09 20:00:06"
+            },
             {
                 "id": "n_6a28474e709bd",
                 "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
@@ -178,6 +202,18 @@
         "replied_topics": [
             "t_6a277ad4bf4d3"
         ],
+        "completed_jobs": 0,
+        "notifications": []
+    },
+    {
+        "id": "6a285742dabe8",
+        "username": "deneme2",
+        "email": "denemedeneme@gmail.com",
+        "password": "$2y$10$aD3rFBO6jtBUOuVq84KrmupZm7QSlSXKPVG1.r.sHULK7PqPkZmM.",
+        "role": "user",
+        "created_at": "2026-06-09 20:11:14",
+        "created_topics": [],
+        "replied_topics": [],
         "completed_jobs": 0,
         "notifications": []
     }
