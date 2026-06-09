@@ -74,5 +74,19 @@
             }
         ],
         "completed_jobs": 1
+    },
+    {
+        "id": "6a284766b635d",
+        "username": "murat\u0131nburnu",
+        "email": "burun@gmail.com",
+        "password": "$2y$10$fpzw6sBuYih\/xyJZjsTMPuFjy1jwn7Yy0ETos.KeY.fcQd1AmVLuC",
+        "role": "user",
+        "created_at": "2026-06-09 19:03:34",
+        "created_topics": [],
+        "replied_topics": [
+            "t_6a277ad4bf4d3"
+        ],
+        "completed_jobs": 0,
+        "notifications": []
     }
 ]
