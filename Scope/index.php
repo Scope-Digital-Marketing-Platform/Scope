@@ -6,7 +6,7 @@ require_once __DIR__ . '/src/utils/roles.php';
 require_once __DIR__ . '/src/utils/validators.php';
 
 $db_file = __DIR__ . '/backend/database/users_data.json';
-$product_db = __DIR__ . '/backend/database/product_data.json';
+$topic_db = __DIR__ . '/backend/database/topics_data.json';
 
 // --- ÇIKIŞ YAPMA İŞLEMİ ---
 if (isset($_GET['logout'])) {
@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         foreach ($users as $user) { if ($user['email'] === $email || $user['username'] === $username) { $exists = true; break; } }
         if ($exists) { echo "<script>alert('Bu email veya kullanıcı adı zaten kayıtlı!');</script>"; } 
         else {
-            $new_user = ['id' => uniqid(), 'username' => $username, 'email' => $email, 'password' => password_hash($password, PASSWORD_DEFAULT), 'role' => 'user', 'created_at' => date('Y-m-d H:i:s')];
+            $new_user = ['id' => uniqid(), 'username' => $username, 'email' => $email, 'password' => password_hash($password, PASSWORD_DEFAULT), 'role' => 'user', 'created_at' => date('Y-m-d H:i:s'), 'created_topics' => [], 'replied_topics' => []];
             $users[] = $new_user;
             file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
             $_SESSION['is_logged_in'] = true; $_SESSION['user_id'] = $new_user['id']; $_SESSION['username'] = $new_user['username']; $_SESSION['role'] = 'user'; $_SESSION['is_admin'] = false;
@@ -55,8 +55,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         echo "<script>alert('Giriş bilgileri hatalı!');</script>";
     }
 
+    // --- PROFİL GÜNCELLEME İŞLEMİ ---
+    if ($action === 'update_profile') {
+        $current_user_id = $_SESSION['user_id'];
+        $new_username = trim($_POST['username']);
+        
+        foreach ($users as &$user) {
+            if ($user['id'] === $current_user_id) {
+                $user['username'] = $new_username;
+                $_SESSION['username'] = $new_username;
+
+                $avatar_dir = "pictures/avatars/";
+                $banner_dir = "pictures/banner/";
+
+                if (!is_dir($avatar_dir)) mkdir($avatar_dir, 0777, true);
+                if (!is_dir($banner_dir)) mkdir($banner_dir, 0777, true);
+
+                if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
+                    $ext = pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION);
+                    $avatar_name = "avatar_" . $user['id'] . "_" . time() . "." . $ext;
+                    $target_path = $avatar_dir . $avatar_name;
+                    if (move_uploaded_file($_FILES['avatar']['tmp_name'], $target_path)) { $user['avatar'] = $target_path; }
+                }
+
+                if (isset($_FILES['banner']) && $_FILES['banner']['error'] === UPLOAD_ERR_OK) {
+                    $ext = pathinfo($_FILES['banner']['name'], PATHINFO_EXTENSION);
+                    $banner_name = "banner_" . $user['id'] . "_" . time() . "." . $ext;
+                    $target_path = $banner_dir . $banner_name;
+                    if (move_uploaded_file($_FILES['banner']['tmp_name'], $target_path)) { $user['banner'] = $target_path; }
+                }
+                break;
+            }
+        }
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
+        header("Location: profile/myaccount?tab=public&success=1");
+        exit;
+    }
+
     // --- YENİ ÜRÜN OLUŞTURMA ---
     if ($action === 'create_product') {
+        $product_db = __DIR__ . '/backend/database/product_data.json';
         $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
 
         $id = uniqid(); 
@@ -111,78 +149,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'cover_image'     => $cover_data,
             'gallery'         => $gallery_paths,
             'product_file'    => $product_file_path,
-            'units_sold'      => 0,
-            'reviews'         => [],
             'created_at'      => date('Y-m-d H:i:s')
         ];
 
         $products[] = $new_product;
         file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
         
-        foreach ($users as &$u) {
-            if ($u['id'] === $_SESSION['user_id']) {
-                if (!isset($u['assets'])) $u['assets'] = [];
-                if (!in_array($id, $u['assets'])) { $u['assets'][] = $id; }
-                break;
-            }
-        }
-        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
         echo "success";
         exit;
     }
 
-    // --- ÜRÜN DÜZENLEME/GÜNCELLEME ---
-    if ($action === 'edit_product' && isset($_SESSION['user_id'])) {
-        $product_id = $_POST['product_id'];
-        $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
-        $updated = false;
-
-        foreach ($products as &$p) {
-            if ($p['id'] === $product_id && $p['seller_id'] === $_SESSION['user_id']) {
-                $p['name'] = $_POST['product_name'] ?? $p['name'];
-                $p['description'] = $_POST['product_detail'] ?? $p['description'];
-                $p['type'] = $_POST['asset_type'] ?? $p['type'];
-                $p['price_total'] = (float)($_POST['price_total'] ?? $p['price_total']);
-                $p['price_seller'] = (float)($_POST['price_seller'] ?? $p['price_seller']);
-
-                $base_dir = __DIR__ . '/backend/database/Products/' . $product_id;
-                $images_dir = $base_dir . '/Images';
-                $files_dir = $base_dir . '/Files';
-
-                if (!is_dir($images_dir)) mkdir($images_dir, 0777, true);
-                if (!is_dir($files_dir)) mkdir($files_dir, 0777, true);
-
-                if (isset($_FILES['cover_image_file']) && $_FILES['cover_image_file']['error'] === UPLOAD_ERR_OK) {
-                    $ext = pathinfo($_FILES['cover_image_file']['name'], PATHINFO_EXTENSION);
-                    $target = $images_dir . '/title_image.' . $ext;
-                    if(move_uploaded_file($_FILES['cover_image_file']['tmp_name'], $target)) {
-                        $p['cover_image'] = 'backend/database/Products/' . $product_id . '/Images/title_image.' . $ext;
-                    }
-                }
-                
-                if (isset($_FILES['product_file']) && $_FILES['product_file']['error'] === UPLOAD_ERR_OK) {
-                    $filename = $_FILES['product_file']['name'];
-                    $target = $files_dir . '/' . $filename;
-                    if(move_uploaded_file($_FILES['product_file']['tmp_name'], $target)) {
-                        $p['product_file'] = 'backend/database/Products/' . $product_id . '/Files/' . $filename;
-                    }
-                }
-
-                $updated = true;
-                break;
-            }
-        }
-
-        if ($updated) {
-            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
-            echo "success";
-        } else {
-            echo "error";
-        }
-        exit;
-    }
-
-    // --- SEPET İŞLEMLERİ ---
+    // --- SEPET İŞLEMLERİ (EKLE / ÇIKAR / CHECKOUT) ---
+    // (Aynı kalacak, uzatmamak için gizlendi ama dosyanızda mevcut kısımlar)
     if ($action === 'add_to_cart' && isset($_SESSION['user_id'])) {
         $product_id = $_POST['product_id'];
         foreach ($users as &$u) {
@@ -193,8 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
         file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
-        echo json_encode(['status' => 'success']); 
-        exit;
+        echo json_encode(['status' => 'success']); exit;
     }
 
     if ($action === 'remove_from_cart' && isset($_SESSION['user_id'])) {
@@ -202,107 +179,117 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         foreach ($users as &$u) {
             if ($u['id'] === $_SESSION['user_id']) {
                 if (isset($u['cart'])) {
-                    $u['cart'] = array_values(array_filter($u['cart'], function($id) use ($product_id) {
-                        return $id !== $product_id;
-                    }));
+                    $u['cart'] = array_values(array_filter($u['cart'], function($id) use ($product_id) { return $id !== $product_id; }));
                 }
                 break;
             }
         }
         file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
-        echo json_encode(['status' => 'success']); 
-        exit;
+        echo json_encode(['status' => 'success']); exit;
     }
 
-    // --- ÖDEME (CHECKOUT) VE SATIŞ ADEDİ ARTIRMA İŞLEMİ ---
     if ($action === 'checkout' && isset($_SESSION['user_id'])) {
-        $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
-        $products_updated = false;
-
         foreach ($users as &$u) {
             if ($u['id'] === $_SESSION['user_id']) {
                 if (!isset($u['assets'])) $u['assets'] = []; 
                 if (isset($u['cart']) && is_array($u['cart'])) {
-                    foreach ($u['cart'] as $cart_item) {
-                        if (!in_array($cart_item, $u['assets'])) {
-                            $u['assets'][] = $cart_item; 
-                            
-                            foreach ($products as &$p) {
-                                if ($p['id'] === $cart_item) {
-                                    $p['units_sold'] = isset($p['units_sold']) ? (int)$p['units_sold'] + 1 : 1;
-                                    $products_updated = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    foreach ($u['cart'] as $cart_item) { if (!in_array($cart_item, $u['assets'])) { $u['assets'][] = $cart_item; } }
                     $u['cart'] = []; 
                 }
                 break;
             }
         }
         file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
-        if ($products_updated) {
-            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
+        echo json_encode(['status' => 'success']); exit;
+    }
+
+    // ==========================================
+    // --- YENİ KONU OLUŞTURMA (COMMUNITY) ---
+    // ==========================================
+    if ($action === 'create_topic' && isset($_SESSION['user_id'])) {
+        $topics = file_exists($topic_db) ? json_decode(file_get_contents($topic_db), true) ?: [] : [];
+        $topic_id = uniqid('t_'); 
+        $images_dir = __DIR__ . '/backend/database/Topics/' . $topic_id;
+        
+        if (!is_dir($images_dir)) mkdir($images_dir, 0777, true);
+
+        $topic_images = [];
+        if (isset($_FILES['topic_images'])) {
+            foreach ($_FILES['topic_images']['name'] as $i => $name) {
+                if ($_FILES['topic_images']['error'][$i] === UPLOAD_ERR_OK) {
+                    $ext = pathinfo($name, PATHINFO_EXTENSION);
+                    $filename = 'img_' . ($i + 1) . '_' . time() . '.' . $ext;
+                    $target = $images_dir . '/' . $filename;
+                    if(move_uploaded_file($_FILES['topic_images']['tmp_name'][$i], $target)) {
+                        $topic_images[] = 'backend/database/Topics/' . $topic_id . '/' . $filename;
+                    }
+                }
+            }
         }
-        echo json_encode(['status' => 'success']); 
+
+        $new_topic = [
+            'id' => $topic_id,
+            'title' => trim($_POST['title'] ?? ''),
+            'content' => trim($_POST['content'] ?? ''),
+            'author_id' => $_SESSION['user_id'],
+            'author_username' => $_SESSION['username'],
+            'images' => $topic_images,
+            'replies' => [],
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+
+        $topics[] = $new_topic;
+        file_put_contents($topic_db, json_encode($topics, JSON_PRETTY_PRINT));
+
+        // Kullanıcı verisine ekle
+        foreach ($users as &$u) {
+            if ($u['id'] === $_SESSION['user_id']) {
+                if(!isset($u['created_topics'])) $u['created_topics'] = [];
+                $u['created_topics'][] = $topic_id;
+                break;
+            }
+        }
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
+
+        header("Location: community");
         exit;
     }
 
-    // --- YORUM (REVIEW) GÖNDERME İŞLEMİ ---
-    if ($action === 'submit_review' && isset($_SESSION['user_id'])) {
-        $product_id = $_POST['product_id'];
-        $rating = (int)$_POST['rating'];
-        $comment = trim($_POST['comment']);
-        $user_id = $_SESSION['user_id'];
-        $username = $_SESSION['username'];
+    // ==========================================
+    // --- KONUYA YANIT EKLEME ---
+    // ==========================================
+    if ($action === 'add_reply' && isset($_SESSION['user_id'])) {
+        $topics = file_exists($topic_db) ? json_decode(file_get_contents($topic_db), true) ?: [] : [];
+        $topic_id = $_POST['topic_id'];
+        $message = trim($_POST['message']);
 
-        $is_owner = false;
-        foreach ($users as $u) {
-            if ($u['id'] === $user_id) {
-                if (isset($u['assets']) && in_array($product_id, $u['assets'])) {
-                    $is_owner = true;
-                }
-                break;
-            }
-        }
-
-        if (!$is_owner) {
-            echo json_encode(['status' => 'error', 'message' => 'Yorum yapabilmek için ürünü satın almalısınız.']);
-            exit;
-        }
-
-        $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
-        $review_added = false;
-
-        foreach ($products as &$p) {
-            if ($p['id'] === $product_id) {
-                if (!isset($p['reviews'])) $p['reviews'] = [];
-                $already_reviewed = false;
-                foreach ($p['reviews'] as $rev) {
-                    if ($rev['user_id'] === $user_id) { $already_reviewed = true; break; }
-                }
-
-                if (!$already_reviewed) {
-                    $p['reviews'][] = [
-                        'user_id' => $user_id,
-                        'username' => $username,
-                        'rating' => $rating,
-                        'comment' => $comment,
-                        'date' => date('Y-m-d')
+        if (!empty($message)) {
+            foreach ($topics as &$t) {
+                if ($t['id'] === $topic_id) {
+                    $t['replies'][] = [
+                        'user_id' => $_SESSION['user_id'],
+                        'username' => $_SESSION['username'],
+                        'message' => $message,
+                        'date' => date('Y-m-d H:i:s')
                     ];
-                    $review_added = true;
+                    break;
                 }
-                break;
             }
-        }
+            file_put_contents($topic_db, json_encode($topics, JSON_PRETTY_PRINT));
 
-        if ($review_added) {
-            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
-            echo json_encode(['status' => 'success']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Bu ürün için zaten bir yorum yaptınız.']);
+            // Kullanıcının yanıt verdiği farklı konuları takip et
+            foreach ($users as &$u) {
+                if ($u['id'] === $_SESSION['user_id']) {
+                    if(!isset($u['replied_topics'])) $u['replied_topics'] = [];
+                    if (!in_array($topic_id, $u['replied_topics'])) {
+                        $u['replied_topics'][] = $topic_id;
+                    }
+                    break;
+                }
+            }
+            file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT));
         }
+        header("Location: topicdetail?id=" . urlencode($topic_id));
         exit;
     }
 }
@@ -316,6 +303,7 @@ $page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scope Projesi</title>
+    <base href="<?php echo str_replace('index.php', '', $_SERVER['SCRIPT_NAME']); ?>">
     <style>
         body {
             background-color: #0d0d0f; color: #ffffff;
@@ -329,7 +317,8 @@ $page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
     <?php include 'src/components/Navbar.php'; ?>
     <div class="page-content">
         <?php
-        $allowed_pages = ['home', 'profile', 'store', 'freelancehub', 'createproduct', 'community', 'dashboard', 'usermanagement', 'assetapprovals', 'escrowdisputes', 'roles', 'productdetail', 'checkout', 'editproduct'];
+        // createtopic ve topicdetail Eklendi
+        $allowed_pages = ['home', 'profile', 'store', 'freelancehub', 'createproduct', 'community', 'createtopic', 'topicdetail', 'dashboard', 'usermanagement', 'assetapprovals', 'escrowdisputes', 'roles', 'productdetail', 'checkout'];
         
         if (in_array($page, $allowed_pages)) {
             $admin_pages = ['dashboard', 'usermanagement', 'assetapprovals', 'escrowdisputes', 'roles'];
@@ -343,12 +332,11 @@ $page = isset($_GET['page']) ? strtolower($_GET['page']) : 'home';
                 if($page == 'roles') $fileName = 'Roles';
                 include "src/pages/admin/" . $fileName . ".php";
             } else {
-                $fileName = '';
                 if ($page === 'freelancehub') $fileName = 'FreelanceHub';
                 elseif ($page === 'createproduct') $fileName = 'CreateProduct';
-                elseif ($page === 'editproduct') $fileName = 'EditProduct';
+                elseif ($page === 'createtopic') $fileName = 'CreateTopic';
+                elseif ($page === 'topicdetail') $fileName = 'TopicDetail';
                 else $fileName = ucfirst($page);
-                
                 include "src/pages/" . $fileName . ".php";
             }
         } else { include 'src/pages/Home.php'; }

@@ -19,6 +19,9 @@
         "cart": [],
         "assets": [
             "6a2590ef5d743"
+        ],
+        "created_topics": [
+            "t_6a277ad4bf4d3"
         ]
     },
     {
@@ -34,6 +37,9 @@
             "6a255c7f78813",
             "6a2590ef5d743",
             "6a259940a41ac"
+        ],
+        "replied_topics": [
+            "t_6a277ad4bf4d3"
         ]
     }
 ]

@@ -1,58 +1,138 @@
-<div class="home-wrapper" style="width: 100%; position: relative; overflow: hidden; min-height: 100vh;">
-    
-    <div class="floating-particles">
+<?php
+$topic_file_path = __DIR__ . '/../../backend/database/topics_data.json';
+$users_db_path = __DIR__ . '/../../backend/database/users_data.json';
+
+$topics = [];
+if (file_exists($topic_file_path)) {
+    $topics = json_decode(file_get_contents($topic_file_path), true) ?: [];
+}
+// Yeniden eskiye sırala
+usort($topics, function($a, $b) { return strtotime($b['created_at']) - strtotime($a['created_at']); });
+
+// Arama Filtresi
+$search_query = isset($_GET['q']) ? trim(strtolower($_GET['q'])) : '';
+if (!empty($search_query)) {
+    $topics = array_filter($topics, function($t) use ($search_query) {
+        return strpos(strtolower($t['title']), $search_query) !== false;
+    });
+}
+
+// Sağ Kutu İçin Aktif Kullanıcı Verileri
+$user_created_count = 0;
+$user_replied_count = 0;
+if (isset($_SESSION['is_logged_in'])) {
+    $users = file_exists($users_db_path) ? json_decode(file_get_contents($users_db_path), true) ?: [] : [];
+    foreach ($users as $u) {
+        if ($u['id'] === $_SESSION['user_id']) {
+            $user_created_count = count($u['created_topics'] ?? []);
+            $user_replied_count = count($u['replied_topics'] ?? []);
+            break;
+        }
+    }
+}
+?>
+
+<style>
+    body .page-content { padding: 0 !important; margin: 0 !important; }
+    .com-layout { display: flex; gap: 30px; max-width: 1200px; width: 100%; margin: 40px auto; padding: 0 20px; align-items: flex-start; text-align: left; }
+    .com-main { flex: 3; display: flex; flex-direction: column; gap: 20px; }
+    .com-sidebar { flex: 1; min-width: 280px; position: sticky; top: 90px; }
+
+    /* Arama ve Başlık Kısmı */
+    .com-header { display: flex; justify-content: space-between; align-items: center; background: #1a1a1e; padding: 20px; border-radius: 12px; border: 1px solid #333; }
+    .search-bar { display: flex; gap: 10px; width: 100%; max-width: 400px; }
+    .search-bar input { flex:1; background: #0d0d0f; border: 1px solid #333; color: white; padding: 12px 15px; border-radius: 8px; outline: none; }
+    .search-bar input:focus { border-color: #f39c12; }
+    .search-btn { background: #333; color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+    .search-btn:hover { background: #f39c12; color: #111; }
+
+    /* Konu Kartları */
+    .topic-card { background: #1a1a1e; border: 1px solid #333; border-radius: 12px; padding: 20px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; transition: all 0.3s; }
+    .topic-card:hover { transform: translateX(5px); border-color: #f39c12; background: rgba(243, 156, 18, 0.03); }
+    .topic-info h3 { color: white; font-size: 1.2rem; margin: 0 0 10px 0; }
+    .topic-meta { color: #8b949e; font-size: 0.85rem; display: flex; gap: 15px; }
+    .topic-stats { text-align: center; color: #8b949e; font-size: 0.85rem; }
+    .topic-stats strong { display: block; color: white; font-size: 1.2rem; }
+
+    /* Mini Profil Kutusu (Sağ Taraf) */
+    .mini-profile { background: #1a1a1e; border: 1px solid #333; border-radius: 12px; padding: 25px; text-align: center; }
+    .mini-profile h2 { color: white; font-size: 1.2rem; margin-top: 0; }
+    .mini-profile p { color: #8b949e; font-size: 0.9rem; margin-bottom: 20px; }
+    .stat-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .stat-row:last-child { border: none; }
+    .stat-row span { color: #8b949e; font-size: 0.95rem; }
+    .stat-row strong { color: #f39c12; font-size: 1.1rem; }
+    .create-btn { display: block; width: 100%; text-align: center; background: #f39c12; color: #111; padding: 12px 0; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 20px; transition: 0.3s; }
+    .create-btn:hover { background: #d68910; }
+
+    /* Light Mode */
+    body.light-mode .com-header, body.light-mode .topic-card, body.light-mode .mini-profile { background: #fff; border-color: #e2e8f0; }
+    body.light-mode .search-bar input { background: #f8fafc; border-color: #cbd5e1; color: #1e293b; }
+    body.light-mode .search-btn { background: #e2e8f0; color: #475569; }
+    body.light-mode .search-btn:hover { background: #3b82f6; color: white; }
+    body.light-mode .topic-info h3, body.light-mode .mini-profile h2, body.light-mode .topic-stats strong { color: #0f172a; }
+    body.light-mode .stat-row span, body.light-mode .topic-meta, body.light-mode .mini-profile p { color: #64748b; }
+    body.light-mode .stat-row strong { color: #3b82f6; }
+    body.light-mode .create-btn { background: #3b82f6; color: white; }
+    body.light-mode .create-btn:hover { background: #2563eb; }
+</style>
+
+<div class="com-layout">
+    <div class="com-main">
+        <div class="com-header">
+            <h2 style="color:white; margin:0; font-size:1.5rem;">Topluluk Konuları</h2>
+            <form method="GET" action="community" class="search-bar">
+                <input type="text" name="q" placeholder="Konu başlıklarında ara..." value="<?php echo htmlspecialchars($search_query); ?>">
+                <button type="submit" class="search-btn">Ara</button>
+            </form>
         </div>
 
-    <main class="home-container">
-        <section class="hero-section" style="min-height: auto; padding-top: 40px; margin-bottom: 30px;">
-            <h1 class="hero-title">Scope <span>Community</span></h1>
-            <p class="hero-desc">Tartışmalara katıl, uzmanlardan öğren ve topluluğun bir parçası ol.</p>
-        </section>
-
-        <div class="home-grid">
-            <div>
-                <div class="panel">
-                    <div class="panel-header" style="margin-bottom: 30px;">
-                        <h2 class="panel-title">Güncel Konular</h2>
-                        <a href="yeni-konu" class="btn-primary" style="padding: 8px 16px; font-size: 0.9rem;">+ Konu Oluştur</a>
-                    </div>
-                    
-                    <div class="topic-list">
-                        <div class="panel" style="background: rgba(255,255,255,0.03); margin-bottom: 15px; padding: 20px;">
-                            <h3 class="panel-title" style="font-size: 1.1rem;">PHP ile veritabanı bağlantısı nasıl yapılır?</h3>
-                            <p style="color: #8b949e; font-size: 0.9rem; margin-top: 5px;">Mustafa tarafından 2 saat önce açıldı • 5 Cevap</p>
-                        </div>
-                        
-                        <div class="panel" style="background: rgba(255,255,255,0.03); margin-bottom: 15px; padding: 20px;">
-                            <h3 class="panel-title" style="font-size: 1.1rem;">Freelance çalışırken dikkat edilmesi gerekenler?</h3>
-                            <p style="color: #8b949e; font-size: 0.9rem; margin-top: 5px;">Ayşe tarafından 5 saat önce açıldı • 12 Cevap</p>
-                        </div>
-                    </div>
+        <div style="display:flex; flex-direction:column; gap:15px;">
+            <?php if(empty($topics)): ?>
+                <div style="padding: 40px; text-align:center; color:#8b949e; border:1px dashed #333; border-radius:12px;">
+                    Aramanıza uygun konu bulunamadı.
                 </div>
-            </div>
-
-            <div>
-                <div class="panel earn-panel" style="height: auto; text-align: center;">
-                    <div class="earn-icon" style="width: 80px; height: 80px; margin: 0 auto 20px;">
-                        <img src="avatar.jpg" style="width: 100%; border-radius: 50%;" alt="Profil">
-                    </div>
-                    <h2 class="panel-title">Kullanıcı Adı</h2>
-                    <p style="color: #8b949e; margin-bottom: 20px;">@kullanici_tag</p>
-                    
-                    <div style="display: flex; justify-content: space-around; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 1.2rem; font-weight: bold;">24</div>
-                            <div style="color: #8b949e; font-size: 0.8rem;">Cevap</div>
+            <?php else: ?>
+                <?php foreach($topics as $topic): ?>
+                    <a href="topicdetail?id=<?php echo $topic['id']; ?>" class="topic-card">
+                        <div class="topic-info">
+                            <h3><?php echo htmlspecialchars($topic['title']); ?></h3>
+                            <div class="topic-meta">
+                                <span>@<?php echo htmlspecialchars($topic['author_username']); ?></span>
+                                <span><?php echo date('d.m.Y H:i', strtotime($topic['created_at'])); ?></span>
+                            </div>
                         </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 1.2rem; font-weight: bold;">8</div>
-                            <div style="color: #8b949e; font-size: 0.8rem;">Konu</div>
+                        <div class="topic-stats">
+                            <strong><?php echo count($topic['replies']); ?></strong>
+                            Yanıt
                         </div>
-                    </div>
-                    
-                    <a href="konularim" class="btn-secondary" style="display: block; margin-top: 25px; width: 100%;">Konularımı Gör</a>
-                </div>
-            </div>
+                    </a>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
-    </main>
+    </div>
+
+    <div class="com-sidebar">
+        <div class="mini-profile">
+            <?php if(isset($_SESSION['is_logged_in'])): ?>
+                <h2>Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></h2>
+                <p>Topluluktaki aktif istatistiklerin:</p>
+                
+                <div class="stat-row">
+                    <span>Oluşturduğun Konular:</span>
+                    <strong><?php echo $user_created_count; ?></strong>
+                </div>
+                <div class="stat-row">
+                    <span>Katıldığın Konular:</span>
+                    <strong><?php echo $user_replied_count; ?></strong>
+                </div>
+
+                <a href="createtopic" class="create-btn">Yeni Konu Aç</a>
+            <?php else: ?>
+                <h2>Hoş Geldin!</h2>
+                <p>Soru sormak, cevap yazmak ve tartışmalara katılmak için giriş yapmalısın.</p>
+                <a href="home" class="create-btn" style="background:#333; color:white;">Giriş Yap</a>
+            <?php endif; ?>
+        </div>
+    </div>
 </div>
