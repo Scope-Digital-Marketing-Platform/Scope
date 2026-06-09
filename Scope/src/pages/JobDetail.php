@@ -10,7 +10,6 @@ if (!$job) { echo "<div style='padding:100px; color:white;'><h2>İlan bulunamad�
 $is_author = isset($_SESSION['user_id']) && $job['author_id'] === $_SESSION['user_id'];
 $is_freelancer = isset($_SESSION['user_id']) && isset($job['accepted_bid']) && $job['accepted_bid']['user_id'] === $_SESSION['user_id'];
 
-// En düşük teklifi bul
 $lowest_bid = null;
 if (!empty($job['bids'])) {
     $lowest_bid = $job['bids'][0]['amount'];
@@ -28,7 +27,6 @@ if (!empty($job['bids'])) {
     
     .section-title { color: white; font-size: 1.4rem; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
     
-    /* Teklif Kartları */
     .bid-card { background: #16161a; border: 1px solid #2a2a30; border-radius: 8px; padding: 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;}
     .bid-info strong { color: #fff; font-size: 1.1rem; display: block; margin-bottom: 5px; }
     .bid-info a { color: #f39c12; text-decoration: none; font-size: 0.9rem; }
@@ -36,17 +34,16 @@ if (!empty($job['bids'])) {
     .bid-action { text-align: right; }
     .bid-amount { color: #2ecc71; font-size: 1.5rem; font-weight: bold; margin-bottom: 10px;}
     
-    .btn { padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; text-decoration: none; display: inline-block; transition: 0.3s; }
+    .btn { padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; text-decoration: none; display: inline-block; transition: 0.3s; font-size: 0.9rem;}
     .btn-primary { background: #f39c12; color: #111; }
+    .btn-danger { background: #ff4a4a; color: white; }
     .btn-success { background: #2ecc71; color: white; }
-    .btn-primary:hover { opacity: 0.9; }
+    .btn:hover { opacity: 0.9; }
 
-    /* Form Kutuları */
     .action-box { background: #1a1a1e; border: 1px dashed #f39c12; border-radius: 12px; padding: 25px; margin-top: 30px; }
     .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;}
     .form-group input, .form-group textarea { background: #0d0d0f; border: 1px solid #333; color: white; padding: 12px; border-radius: 8px; outline: none; }
-    .form-group input[type="file"] { border: 1px dashed #555; }
-
+    
     body.light-mode .jd-main, body.light-mode .bid-card, body.light-mode .action-box { background: #fff; border-color: #e2e8f0; }
     body.light-mode .jd-title, body.light-mode .section-title, body.light-mode .bid-info strong { color: #0f172a; border-color: #e2e8f0; }
     body.light-mode .jd-content, body.light-mode .jd-meta, body.light-mode .bid-info p { color: #475569; }
@@ -59,7 +56,19 @@ if (!empty($job['bids'])) {
     <div class="jd-main">
         <div class="jd-header">
             <h1 class="jd-title"><?php echo htmlspecialchars($job['title']); ?></h1>
-            <div class="jd-price"><?php echo htmlspecialchars($job['budget']); ?> $</div>
+            <div style="text-align:right;">
+                <div class="jd-price"><?php echo htmlspecialchars($job['budget']); ?> $</div>
+                <?php if($is_author && $job['status'] === 'open'): ?>
+                    <div style="margin-top: 10px; display:flex; gap:10px; justify-content:flex-end;">
+                        <a href="editjob?id=<?php echo urlencode($job['id']); ?>" class="btn btn-primary" style="padding: 6px 12px;">Düzenle</a>
+                        <form method="POST" action="index.php" style="margin:0;">
+                            <input type="hidden" name="action" value="delete_job">
+                            <input type="hidden" name="job_id" value="<?php echo htmlspecialchars($job['id']); ?>">
+                            <button type="submit" class="btn btn-danger" style="padding: 6px 12px;" onclick="return confirm('Bu ilanı tamamen silmek istiyor musunuz?');">Kaldır</button>
+                        </form>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
         <div class="jd-meta">
             Oluşturan: <a href="profile?user=<?php echo htmlspecialchars($job['author_username']); ?>" style="color:#f39c12; text-decoration:none;">@<?php echo htmlspecialchars($job['author_username']); ?></a> | 
@@ -70,7 +79,6 @@ if (!empty($job['bids'])) {
 
     <?php if($job['status'] === 'open'): ?>
         <h3 class="section-title">Gelen Teklifler <?php echo $lowest_bid ? "(En düşük: {$lowest_bid} $)" : ""; ?></h3>
-        
         <?php if(empty($job['bids'])): ?>
             <p style="color:#8b949e;">Henüz teklif verilmemiş.</p>
         <?php else: ?>
@@ -119,8 +127,7 @@ if (!empty($job['bids'])) {
     <?php if($job['status'] === 'in_progress'): ?>
         <div class="action-box" style="border-color:#3498db;">
             <h3 style="color:#3498db; margin-top:0;">İş Yapım Aşamasında</h3>
-            <p>İşi Yapan: <strong>@<?php echo htmlspecialchars($job['accepted_bid']['username']); ?></strong> (Kabul Edilen Fiyat: <?php echo $job['accepted_bid']['amount']; ?> $)</p>
-            
+            <p>İşi Yapan: <strong>@<?php echo htmlspecialchars($job['accepted_bid']['username']); ?></strong></p>
             <?php if($job['delivery']): ?>
                 <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px; margin-top:15px;">
                     <strong style="color:white;">Teslimat Mesajı:</strong>
@@ -128,7 +135,6 @@ if (!empty($job['bids'])) {
                     <?php if($job['delivery']['file']): ?>
                         <a href="<?php echo htmlspecialchars($job['delivery']['file']); ?>" download class="btn btn-primary" style="margin-bottom:15px;">Dosyayı İndir</a>
                     <?php endif; ?>
-                    
                     <?php if($is_author): ?>
                         <hr style="border-color:#333; margin:20px 0;">
                         <form action="index.php" method="POST">
@@ -143,14 +149,8 @@ if (!empty($job['bids'])) {
                     <form action="index.php" method="POST" enctype="multipart/form-data" style="margin-top:20px;">
                         <input type="hidden" name="action" value="deliver_job">
                         <input type="hidden" name="job_id" value="<?php echo $job['id']; ?>">
-                        <div class="form-group">
-                            <label>Teslimat Notu</label>
-                            <textarea name="message" required placeholder="Müşteriye işi bitirdiğinizi bildirin..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Proje Dosyası</label>
-                            <input type="file" name="delivery_file" required>
-                        </div>
+                        <div class="form-group"><label>Teslimat Notu</label><textarea name="message" required placeholder="İşi bitirdiğinizi bildirin..."></textarea></div>
+                        <div class="form-group"><label>Proje Dosyası</label><input type="file" name="delivery_file" required></div>
                         <button type="submit" class="btn btn-success">İşi Teslim Et</button>
                     </form>
                 <?php else: ?>

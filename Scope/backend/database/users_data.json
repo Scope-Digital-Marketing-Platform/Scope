@@ -21,9 +21,31 @@
             "6a2590ef5d743"
         ],
         "created_topics": [
-            "t_6a277ad4bf4d3"
+            "t_6a277ad4bf4d3",
+            "t_6a283b9b018f8"
         ],
         "notifications": [
+            {
+                "id": "n_6a2847629313d",
+                "text": "@al\u0131c\u0131 sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=al%C4%B1c%C4%B1",
+                "read": false,
+                "date": "2026-06-09 19:03:30"
+            },
+            {
+                "id": "n_6a284128ded9c",
+                "text": "@al\u0131c\u0131 sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=al%C4%B1c%C4%B1",
+                "read": true,
+                "date": "2026-06-09 18:36:56"
+            },
+            {
+                "id": "n_6a283d256410f",
+                "text": "@al\u0131c\u0131 sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=al%C4%B1c%C4%B1",
+                "read": true,
+                "date": "2026-06-09 18:19:49"
+            },
             {
                 "id": "n_6a27836a7dedd",
                 "text": "@al\u0131c\u0131 i\u015fi teslim etti. Onay\u0131n\u0131z bekleniyor.",
@@ -58,6 +80,76 @@
             "t_6a277ad4bf4d3"
         ],
         "notifications": [
+            {
+                "id": "n_6a28474e709bd",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": true,
+                "date": "2026-06-09 19:03:10"
+            },
+            {
+                "id": "n_6a28472bba526",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": true,
+                "date": "2026-06-09 19:02:35"
+            },
+            {
+                "id": "n_6a2845ecca294",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": true,
+                "date": "2026-06-09 18:57:16"
+            },
+            {
+                "id": "n_6a28419c59565",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": true,
+                "date": "2026-06-09 18:38:52"
+            },
+            {
+                "id": "n_6a284199c637e",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": true,
+                "date": "2026-06-09 18:38:49"
+            },
+            {
+                "id": "n_6a28419749c7f",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": true,
+                "date": "2026-06-09 18:38:47"
+            },
+            {
+                "id": "n_6a284190d2568",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": true,
+                "date": "2026-06-09 18:38:40"
+            },
+            {
+                "id": "n_6a28417943535",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": true,
+                "date": "2026-06-09 18:38:17"
+            },
+            {
+                "id": "n_6a283d0d6e9ae",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": true,
+                "date": "2026-06-09 18:19:25"
+            },
+            {
+                "id": "n_6a283cd3d49ec",
+                "text": "@deneme sana yeni bir mesaj g\u00f6nderdi.",
+                "link": "social?user=deneme",
+                "read": true,
+                "date": "2026-06-09 18:18:27"
+            },
             {
                 "id": "n_6a2783a423bf4",
                 "text": "@deneme teslimat\u0131n\u0131z\u0131 onaylad\u0131! Ba\u015far\u0131l\u0131 i\u015fler say\u0131n\u0131z artt\u0131.",

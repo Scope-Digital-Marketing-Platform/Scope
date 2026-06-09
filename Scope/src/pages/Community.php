@@ -6,18 +6,18 @@ $topics = [];
 if (file_exists($topic_file_path)) {
     $topics = json_decode(file_get_contents($topic_file_path), true) ?: [];
 }
-// Yeniden eskiye sırala
 usort($topics, function($a, $b) { return strtotime($b['created_at']) - strtotime($a['created_at']); });
 
-// Arama Filtresi
 $search_query = isset($_GET['q']) ? trim(strtolower($_GET['q'])) : '';
+$filter_mode = isset($_GET['filter']) ? $_GET['filter'] : '';
+
 if (!empty($search_query)) {
-    $topics = array_filter($topics, function($t) use ($search_query) {
-        return strpos(strtolower($t['title']), $search_query) !== false;
-    });
+    $topics = array_filter($topics, function($t) use ($search_query) { return strpos(strtolower($t['title']), $search_query) !== false; });
+}
+if ($filter_mode === 'my_topics' && isset($_SESSION['user_id'])) {
+    $topics = array_filter($topics, function($t) { return $t['author_id'] === $_SESSION['user_id']; });
 }
 
-// Sağ Kutu İçin Aktif Kullanıcı Verileri
 $user_created_count = 0;
 $user_replied_count = 0;
 if (isset($_SESSION['is_logged_in'])) {
@@ -33,7 +33,6 @@ if (isset($_SESSION['is_logged_in'])) {
 ?>
 
 <div class="home-wrapper" style="width: 100%; position: relative; overflow: hidden; min-height: 100vh;">
-
     <div class="floating-particles">
         <div class="particle p-1">$</div> <div class="particle p-2">✕</div> <div class="particle p-3">◯</div> <div class="particle p-4">&lt;/&gt;</div> <div class="particle p-5">✦</div>
         <div class="particle p-11">{}</div> <div class="particle p-12">◯</div> <div class="particle p-13">$</div> <div class="particle p-14">✕</div> <div class="particle p-15">&lt;/&gt;</div>
@@ -44,15 +43,11 @@ if (isset($_SESSION['is_logged_in'])) {
     <style>
         body .page-content { padding: 0 !important; margin: 0 !important; }
         
-        /* Animasyon CSS */
+        /* Animasyon CSS Konumları - Burası kırpılmamalı! */
         .floating-particles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
         .particle { position: absolute; color: rgba(255, 255, 255, 0.08); font-size: 28px; font-weight: 900; animation: fall linear infinite; }
         .particle:nth-child(odd) { color: rgba(243, 156, 18, 0.08); }
-        @keyframes fall {
-            0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; } 90% { opacity: 1; }
-            100% { transform: translateY(120vh) rotate(360deg); opacity: 0; }
-        }
+        @keyframes fall { 0% { transform: translateY(-50px) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(120vh) rotate(360deg); opacity: 0; } }
         .p-1 { left: 3%; animation-duration: 15s; animation-delay: -5s; font-size: 32px;}
         .p-2 { left: 9%; animation-duration: 22s; animation-delay: -14s; }
         .p-3 { left: 14%; animation-duration: 18s; animation-delay: -2s; font-size: 24px;}
@@ -74,7 +69,6 @@ if (isset($_SESSION['is_logged_in'])) {
         .p-19 { left: 85%; animation-duration: 15s; animation-delay: -13s; font-size: 34px;}
         .p-20 { left: 91%; animation-duration: 23s; animation-delay: -8s; font-size: 27px;}
 
-        /* Sayfa Düzeni */
         .com-layout { display: flex; gap: 30px; max-width: 1200px; width: 100%; margin: 40px auto; padding: 0 20px; align-items: flex-start; text-align: left; position: relative; z-index: 10;}
         .com-main { flex: 3; display: flex; flex-direction: column; gap: 20px; }
         .com-sidebar { flex: 1; min-width: 280px; position: sticky; top: 90px; }
@@ -82,7 +76,6 @@ if (isset($_SESSION['is_logged_in'])) {
         .com-header { display: flex; justify-content: space-between; align-items: center; background: rgba(26, 26, 30, 0.8); backdrop-filter: blur(10px); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
         .search-bar { display: flex; gap: 10px; width: 100%; max-width: 400px; }
         .search-bar input { flex:1; background: #0d0d0f; border: 1px solid #333; color: white; padding: 12px 15px; border-radius: 8px; outline: none; }
-        .search-bar input:focus { border-color: #f39c12; }
         .search-btn { background: #333; color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
         .search-btn:hover { background: #f39c12; color: #111; }
 
@@ -102,6 +95,8 @@ if (isset($_SESSION['is_logged_in'])) {
         .stat-row strong { color: #f39c12; font-size: 1.1rem; }
         .create-btn { display: block; width: 100%; text-align: center; background: #f39c12; color: #111; padding: 12px 0; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 20px; transition: 0.3s; }
         .create-btn:hover { background: #d68910; }
+        .my-topics-btn { display: block; width: 100%; text-align: center; background: transparent; color: #8b949e; padding: 10px 0; border: 1px solid #333; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 10px; transition: 0.3s; }
+        .my-topics-btn:hover { border-color: #f39c12; color: white; background: rgba(243, 156, 18, 0.1); }
 
         body.light-mode .com-header, body.light-mode .topic-card, body.light-mode .mini-profile { background: rgba(255, 255, 255, 0.9); border-color: rgba(0,0,0,0.05); }
         body.light-mode .search-bar input { background: #f8fafc; border-color: #cbd5e1; color: #1e293b; }
@@ -112,6 +107,8 @@ if (isset($_SESSION['is_logged_in'])) {
         body.light-mode .stat-row strong { color: #3b82f6; }
         body.light-mode .create-btn { background: #3b82f6; color: white; }
         body.light-mode .create-btn:hover { background: #2563eb; }
+        body.light-mode .my-topics-btn { border-color: #cbd5e1; color: #64748b; }
+        body.light-mode .my-topics-btn:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.05); }
         body.light-mode .particle { color: rgba(59, 130, 246, 0.18); }
         body.light-mode .particle:nth-child(odd) { color: rgba(15, 23, 42, 0.12); }
     </style>
@@ -119,7 +116,9 @@ if (isset($_SESSION['is_logged_in'])) {
     <div class="com-layout">
         <div class="com-main">
             <div class="com-header">
-                <h2 style="color:inherit; margin:0; font-size:1.5rem;">Topluluk Konuları</h2>
+                <h2 style="color:inherit; margin:0; font-size:1.5rem;">
+                    <?php echo $filter_mode === 'my_topics' ? 'Benim Konularım' : 'Topluluk Konuları'; ?>
+                </h2>
                 <form method="GET" action="community" class="search-bar">
                     <input type="text" name="q" placeholder="Konu başlıklarında ara..." value="<?php echo htmlspecialchars($search_query); ?>">
                     <button type="submit" class="search-btn">Ara</button>
@@ -129,7 +128,7 @@ if (isset($_SESSION['is_logged_in'])) {
             <div style="display:flex; flex-direction:column; gap:15px;">
                 <?php if(empty($topics)): ?>
                     <div style="padding: 40px; text-align:center; color:#8b949e; border:1px dashed rgba(255,255,255,0.1); border-radius:12px; backdrop-filter: blur(10px);">
-                        Aramanıza uygun konu bulunamadı.
+                        Konu bulunamadı.
                     </div>
                 <?php else: ?>
                     <?php foreach($topics as $topic): ?>
@@ -167,6 +166,10 @@ if (isset($_SESSION['is_logged_in'])) {
                     </div>
 
                     <a href="createtopic" class="create-btn">Yeni Konu Aç</a>
+                    <a href="community?filter=my_topics" class="my-topics-btn">Benim Konularım</a>
+                    <?php if($filter_mode === 'my_topics'): ?>
+                        <a href="community" style="color:#8b949e; font-size:12px; margin-top:10px; display:block;">Filtreyi Temizle</a>
+                    <?php endif; ?>
                 <?php else: ?>
                     <h2>Hoş Geldin!</h2>
                     <p>Soru sormak, cevap yazmak ve tartışmalara katılmak için giriş yapmalısın.</p>
