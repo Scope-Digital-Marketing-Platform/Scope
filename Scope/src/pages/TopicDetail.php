@@ -11,6 +11,15 @@ foreach ($topics as $t) {
 if (!$current_topic) { echo "<div style='padding:100px; color:white;'><h2>Konu bulunamadı veya silinmiş.</h2></div>"; exit; }
 
 $is_author = isset($_SESSION['user_id']) && $current_topic['author_id'] === $_SESSION['user_id'];
+
+// --- KULLANICI ROL VE YETKİ KONTROLÜ ---
+$roles_db_path = __DIR__ . '/../../backend/database/roles_data.json';
+$roles_data = file_exists($roles_db_path) ? json_decode(file_get_contents($roles_db_path), true) : [];
+$current_role = $_SESSION['role'] ?? 'user';
+$user_permissions = $roles_data[$current_role]['permissions'] ?? [];
+
+// "all_access" yetkisine sahip mi kontrolü
+$can_delete_any = in_array('all_access', $user_permissions);
 ?>
 <style>
     .td-wrapper { max-width: 900px; width: 100%; margin: 40px auto; text-align: left; }
@@ -31,12 +40,15 @@ $is_author = isset($_SESSION['user_id']) && $current_topic['author_id'] === $_SE
     .btn-danger:hover { background: #d63031; }
     
     .td-replies-header { color: white; font-size: 1.4rem; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-    .reply-card { background: #16161a; border: 1px solid #2a2a30; border-radius: 8px; padding: 20px; margin-bottom: 15px; }
-    .reply-meta { display: flex; justify-content: space-between; margin-bottom: 10px; color: #8b949e; font-size: 0.85rem; }
+    .reply-card { background: #16161a; border: 1px solid #2a2a30; border-radius: 8px; padding: 20px; margin-bottom: 15px; position: relative; }
+    .reply-meta { display: flex; justify-content: space-between; margin-bottom: 10px; color: #8b949e; font-size: 0.85rem; align-items: center; }
     .reply-meta strong { color: #fff; font-size: 1rem; }
     .reply-text { color: #c9d1d9; line-height: 1.5; white-space: pre-wrap; }
     .reply-form-box { background: #1a1a1e; border: 1px solid #333; border-radius: 12px; padding: 25px; margin-top: 40px; }
     .reply-form-box textarea { width: 100%; background: #0d0d0f; border: 1px solid #333; color: white; padding: 15px; border-radius: 8px; resize: vertical; min-height: 120px; outline: none; box-sizing: border-box; font-size: 1rem; margin-bottom: 15px; }
+
+    .btn-delete-reply { background: #a4452f; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: 0.3s; }
+    .btn-delete-reply:hover { background: #d63031; }
 
     body.light-mode .td-main, body.light-mode .reply-form-box { background: #fff; border-color: #e2e8f0; }
     body.light-mode .td-title, body.light-mode .td-replies-header, body.light-mode .reply-meta strong { color: #0f172a; border-color: #e2e8f0; }
@@ -84,10 +96,24 @@ $is_author = isset($_SESSION['user_id']) && $current_topic['author_id'] === $_SE
         <p style="color:#8b949e; font-style:italic;">Henüz kimse yanıt vermemiş. İlk yanıtı sen yaz!</p>
     <?php else: ?>
         <?php foreach($current_topic['replies'] as $reply): ?>
+            <?php 
+                // Yorum sahibi kontrolü
+                $is_reply_owner = (isset($_SESSION['user_id']) && $_SESSION['user_id'] === $reply['user_id']); 
+            ?>
             <div class="reply-card">
                 <div class="reply-meta">
-                    <strong>@<?php echo htmlspecialchars($reply['username']); ?></strong>
-                    <span><?php echo date('d.m.Y H:i', strtotime($reply['date'])); ?></span>
+                    <div>
+                        <strong>@<?php echo htmlspecialchars($reply['username']); ?></strong>
+                        <span style="margin-left:10px;"><?php echo date('d.m.Y H:i', strtotime($reply['date'])); ?></span>
+                    </div>
+                    
+                    <?php if ($is_reply_owner || $can_delete_any): ?>
+                        <button class="btn-delete-reply" 
+                            onclick="deleteReply('<?php echo htmlspecialchars($current_topic['id']); ?>', '<?php echo htmlspecialchars($reply['user_id']); ?>', '<?php echo htmlspecialchars($reply['date']); ?>')">
+                            Sil
+                        </button>
+                    <?php endif; ?>
+
                 </div>
                 <div class="reply-text"><?php echo htmlspecialchars($reply['message']); ?></div>
             </div>
@@ -108,3 +134,42 @@ $is_author = isset($_SESSION['user_id']) && $current_topic['author_id'] === $_SE
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+    function deleteReply(topicId, replyUserId, replyDate) {
+        if (!confirm("Bu yorumu kalıcı olarak silmek istediğinize emin misiniz?")) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'delete_reply');
+        formData.append('topic_id', topicId);
+        formData.append('reply_user_id', replyUserId);
+        formData.append('reply_date', replyDate);
+
+        // Backend adresi (kök dizinden otomatik ayarlanır)
+        const backendUrl = "<?php echo str_replace('index.php', '', $_SERVER['SCRIPT_NAME']); ?>index.php";
+
+        fetch(backendUrl, { method: 'POST', body: formData })
+        .then(async response => {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch(e) {
+                console.error("Hatalı Yanıt:", text);
+                throw new Error("Sunucu geçersiz bir yanıt döndürdü.");
+            }
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.reload(); // Silince sayfayı yenile
+            } else {
+                alert(data.message || "Yorum silinemedi.");
+            }
+        })
+        .catch(error => {
+            console.error('Hata:', error);
+            alert("Sistemsel bir hata oluştu.");
+        });
+    }
+</script>

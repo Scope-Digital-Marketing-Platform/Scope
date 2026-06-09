@@ -97,7 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 } break;
             }
         }
-        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT)); header("Location: profile/myaccount?tab=public&success=1"); exit;
+        file_put_contents($db_file, json_encode($users, JSON_PRETTY_PRINT)); 
+        $base_url = str_replace('index.php', '', $_SERVER['SCRIPT_NAME']);
+        $redirect_path = ltrim($base_url, '/') . "profile/myaccount?tab=public&success=1";
+        header("Location: /" . $redirect_path);
+        exit;
     }
 
     if ($action === 'create_product') {
@@ -195,6 +199,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         echo json_encode(['status' => 'success']); exit;
     }
 
+    // --- YORUM SİSTEMİ (ÜRÜNLER İÇİN) ---
+    if ($action === 'submit_review' && isset($_SESSION['user_id'])) {
+        ob_clean(); // HTML kalıntılarını önle
+        header('Content-Type: application/json');
+        
+        $product_id = $_POST['product_id']; $rating = (int)$_POST['rating']; $comment = trim($_POST['comment']);
+        $user_id = $_SESSION['user_id']; $username = $_SESSION['username'];
+
+        $is_owner = false;
+        foreach ($users as $u) {
+            if ($u['id'] === $user_id) {
+                if (isset($u['assets']) && in_array($product_id, $u['assets'])) { $is_owner = true; } break;
+            }
+        }
+
+        if (!$is_owner) {
+            echo json_encode(['status' => 'error', 'message' => 'Yorum yapabilmek için ürünü satın almalısınız.']);
+            exit;
+        }
+
+        $products = file_exists($product_db) ? json_decode(file_get_contents($product_db), true) ?: [] : [];
+        $review_added = false;
+
+        foreach ($products as &$p) {
+            if ($p['id'] === $product_id) {
+                if (!isset($p['reviews'])) $p['reviews'] = [];
+                $already_reviewed = false;
+                foreach ($p['reviews'] as $rev) { if ($rev['user_id'] === $user_id) { $already_reviewed = true; break; } }
+
+                if (!$already_reviewed) {
+                    $p['reviews'][] = [
+                        'user_id' => $user_id, 'username' => $username, 'rating' => $rating, 'comment' => $comment, 'date' => date('Y-m-d')
+                    ];
+                    $review_added = true;
+                } break;
+            }
+        }
+
+        if ($review_added) {
+            file_put_contents($product_db, json_encode($products, JSON_PRETTY_PRINT));
+            echo json_encode(['status' => 'success']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Bu ürün için zaten bir yorum yaptınız.']);
+        }
+        exit;
+    }
+
+    // ==========================================
+    // --- FORUM (COMMUNITY) İŞLEMLERİ ---
+    // ==========================================
+
     if ($action === 'create_topic' && isset($_SESSION['user_id'])) {
         $topics = file_exists($topic_db) ? json_decode(file_get_contents($topic_db), true) ?: [] : [];
         $topic_id = uniqid('t_'); $images_dir = __DIR__ . '/backend/database/Topics/' . $topic_id;
@@ -261,6 +316,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         header("Location: topicdetail?id=" . urlencode($topic_id)); exit;
     }
 
+    // YENİ EKLENEN YORUM SİLME İŞLEMİ
+    if ($action === 'delete_reply' && isset($_SESSION['user_id'])) {
+        ob_clean(); // HTML sızıntısını engelle
+        header('Content-Type: application/json');
+        
+        $topic_id = $_POST['topic_id'];
+        $reply_date = $_POST['reply_date'];
+        $reply_user_id = $_POST['reply_user_id'];
+        
+        $current_user_id = $_SESSION['user_id'];
+        $current_role = $_SESSION['role'] ?? 'user';
+
+        // İzin kontrolü için roller dosyasını oku
+        $roles_file = __DIR__ . '/backend/database/roles_data.json';
+        $roles_data = file_exists($roles_file) ? json_decode(file_get_contents($roles_file), true) : [];
+        $permissions = $roles_data[$current_role]['permissions'] ?? [];
+        
+        // Silme yetkisi var mı? (all_access yetkisine sahipse VEYA yorumu kendisi yaptıysa)
+        $can_delete_any = in_array('all_access', $permissions);
+        $is_owner = ($current_user_id === $reply_user_id);
+
+        if (!$can_delete_any && !$is_owner) {
+            echo json_encode(['status' => 'error', 'message' => 'Bu yorumu silme yetkiniz yok.']);
+            exit;
+        }
+
+        $topics = file_exists($topic_db) ? json_decode(file_get_contents($topic_db), true) ?: [] : [];
+        $deleted = false;
+
+        foreach ($topics as &$t) {
+            if ($t['id'] === $topic_id) {
+                $original_count = count($t['replies']);
+                $t['replies'] = array_values(array_filter($t['replies'], function($r) use ($reply_date, $reply_user_id) {
+                    return !($r['date'] === $reply_date && $r['user_id'] === $reply_user_id);
+                }));
+                
+                if (count($t['replies']) < $original_count) {
+                    $deleted = true;
+                }
+                break;
+            }
+        }
+
+        if ($deleted) {
+            file_put_contents($topic_db, json_encode($topics, JSON_PRETTY_PRINT));
+            echo json_encode(['status' => 'success']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Yorum bulunamadı veya zaten silinmiş.']);
+        }
+        exit;
+    }
+
+    // ==========================================
+    // --- FREELANCE (İŞ) İŞLEMLERİ ---
+    // ==========================================
     if ($action === 'create_job' && isset($_SESSION['user_id'])) {
         $jobs = file_exists($freelance_db) ? json_decode(file_get_contents($freelance_db), true) ?: [] : [];
         $job_id = uniqid('job_'); 

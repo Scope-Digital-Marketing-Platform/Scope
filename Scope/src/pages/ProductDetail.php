@@ -264,6 +264,9 @@ if (empty($images)) $images[] = 'assets/images/default.jpg';
 </div>
 
 <script>
+    // Dinamik Base URL'yi JS içine taşıdık
+    const backendUrl = "<?php echo str_replace('index.php', '', $_SERVER['SCRIPT_NAME']); ?>index.php";
+
     // --- YORUM GÖNDERME AJAX ---
     function submitReview(productId) {
         const rating = document.getElementById('reviewRating').value;
@@ -284,8 +287,16 @@ if (empty($images)) $images[] = 'assets/images/default.jpg';
         formData.append('rating', rating);
         formData.append('comment', comment);
 
-        fetch('index.php', { method: 'POST', body: formData })
-        .then(response => response.json())
+        fetch(backendUrl, { method: 'POST', body: formData })
+        .then(async response => {
+            const text = await response.text(); // Önce text olarak okuyoruz ki hata varsa çözelim
+            try {
+                return JSON.parse(text);
+            } catch(e) {
+                console.error("Sunucudan Gelen Hatalı Yanıt:", text);
+                throw new Error("Sunucu JSON yerine geçersiz bir yanıt döndürdü.");
+            }
+        })
         .then(data => {
             if (data.status === 'success') {
                 alert("Yorumunuz başarıyla eklendi!");
@@ -297,8 +308,8 @@ if (empty($images)) $images[] = 'assets/images/default.jpg';
             }
         })
         .catch(error => {
-            console.error('Hata:', error);
-            alert("Sistemsel bir hata oluştu.");
+            console.error('Hata Detayı:', error);
+            alert("Sistemsel bir hata oluştu. (Eğer sorun devam ediyorsa F12'ye basıp Konsol'daki kırmızı hatayı kontrol edin.)");
             btn.innerText = "Yorumu Gönder";
             btn.disabled = false;
         });
@@ -310,8 +321,16 @@ if (empty($images)) $images[] = 'assets/images/default.jpg';
         formData.append('action', 'add_to_cart');
         formData.append('product_id', productId);
 
-        fetch('index.php', { method: 'POST', body: formData })
-        .then(response => response.json())
+        fetch(backendUrl, { method: 'POST', body: formData })
+        .then(async response => {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch(e) {
+                console.error("Sunucudan Gelen Hatalı Yanıt:", text);
+                throw new Error("Sunucu JSON yerine geçersiz bir yanıt döndürdü.");
+            }
+        })
         .then(data => {
             if(data.status === 'success') {
                 alert("Ürün sepete eklendi!");
@@ -321,7 +340,7 @@ if (empty($images)) $images[] = 'assets/images/default.jpg';
             }
         })
         .catch(error => {
-            console.error('Hata:', error);
+            console.error('Hata Detayı:', error);
             alert("Sistemsel bir hata oluştu veya oturumunuz kapalı.");
         });
     }
